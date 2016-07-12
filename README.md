@@ -18,10 +18,10 @@ Here are some features I would like to (or already) implemented:
 - [x] A vehicle motion model that adjust point clouds according to vehicle
   movements.
 - [x] Time syncing with INS/GPS devices
-- [x] (Partially completed) An unified memory model that automatically deals the
-  swapping of data from/to external hard disk. This lower level api is invisible
-  to upper layer users. They just query for some data, if the data isn't in memory,
-  it'll be read from disk.
+- [x] An unified memory model that automatically deals the swapping of data
+  from/to external hard disk. This lower level api is invisible to upper layer
+  users. They just query for some data, if the data isn't in memory, it'll be
+  read from disk. (partially complete)
 - [ ] LiDAR calibration (This is necessary for old Velodyne LiDARs)
 - [ ] Implement various SLAM algorithms.
 
