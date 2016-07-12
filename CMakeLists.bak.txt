@@ -1,0 +1,95 @@
+project(VeloSLAM)
+cmake_minimum_required(VERSION 2.8)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
+#-----> project/workspace, add them to ${UI_RES_FILES}
+set(UI_RES_FILES pclviewer.ui)
+# Find includes in corresponding build directories
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+# Instruct CMake to run moc automatically when needed.
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+find_package( Qt5Widgets )
+
+find_library(PCAP_LIBRARY pcap DOC "pcap library")
+find_path(PCAP_INCLUDE_DIR pcap.h DOC "pcap include directory")
+mark_as_advanced(PCAP_LIBRARY PCAP_INCLUDE_DIR)
+include_directories(${PCAP_INCLUDE_DIR})
+
+#find_package(Eigen REQUIRED)
+#include_directories(${EIGEN_INCLUDE_DIR})
+
+if(WIN32 OR APPLE)
+  set(Boost_USE_STATIC_LIBS ON)
+endif(WIN32 OR APPLE)
+set(Boost_USE_MULTITHREADED ON)
+find_package(Boost REQUIRED COMPONENTS system thread chrono regex date_time filesystem)
+set(ALL_BOOST_LIBRARIES ${Boost_LIBRARIES})
+include_directories(${Boost_INCLUDE_DIRS})
+find_package(Boost COMPONENTS atomic)
+list(APPEND ALL_BOOST_LIBRARIES ${Boost_LIBRARIES})
+include_directories(${Boost_INCLUDE_DIRS})
+find_package(Boost COMPONENTS timer)
+list(APPEND ALL_BOOST_LIBRARIES ${Boost_LIBRARIES})
+include_directories(${Boost_INCLUDE_DIRS})
+
+########################
+# build paraview plugin
+
+set(deps)
+set(slam_sources)
+
+list(APPEND deps
+  ${PCAP_LIBRARY}
+  ${liblas_LIBRARY}
+  ${ALL_BOOST_LIBRARIES}
+  )
+
+list(APPEND slam_sources
+    vtkPacketFileWriter.cxx
+    SmallPacketSender.h
+    TransformManager.cxx
+    HDLReader.cxx
+    IMUSource.cxx
+    HDLSource.cxx
+    HDLProcessor.h
+    HDLProcessor.cxx
+    HDLFrame.h
+    HDLFrame.cxx
+    CoordiTran.cpp
+    CoordiTran.h
+    type_defs.h
+    )
+
+set(slam_library_name VeloSLAM)
+
+find_package(PCL REQUIRED COMPONENTS)
+find_package (VTK REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
+add_library(${slam_library_name} SHARED ${slam_sources})
+target_link_libraries(${slam_library_name} ${PCAP_LIBRARY} ${ALL_BOOST_LIBRARIES} pcl_common pcl_io)
+
+add_executable(PacketFileSender PacketFileSender.cxx)
+target_link_libraries(PacketFileSender LINK_PUBLIC ${slam_library_name})
+
+add_executable(TestIMUSender TestIMUSender.cxx)
+target_link_libraries(TestIMUSender LINK_PUBLIC ${slam_library_name})
+
+add_executable(TestIMUReader TestIMUReader.cxx)
+target_link_libraries(TestIMUReader LINK_PUBLIC ${slam_library_name})
+
+set(slam_main_srcs
+    SlamMain.cpp
+    pclviewer.cpp
+    pclviewer.h)
+set(slam_main_deps
+    Qt5::Widgets
+    ${PCL_LIBRARIES})
+add_executable(SlamMain ${slam_main_srcs})
+target_link_libraries(SlamMain LINK_PUBLIC ${slam_library_name} ${ALL_BOOST_LIBRARIES} ${slam_deps})
+
+add_executable(TestIMUFile testimufile.cxx)
