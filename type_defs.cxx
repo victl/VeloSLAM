@@ -65,3 +65,21 @@ PoseTransform::PoseTransform()
 //    }
 //    return is;
 //}
+
+void timevalToPtime(timeval &tv, ptime &t) {
+    t = from_time_t(tv.tv_sec);
+    t += time_duration(8,0,0,tv.tv_usec); // This is related to your local time_zone. For our group, we work at GMT+8
+}
+
+void ptimeToWeekMilli(ptime &t, uint16_t &week, uint32_t &milli)
+{
+    week = t.date().week_number();
+    ptime beginOfWeek(boost::gregorian::date(t.date() - boost::gregorian::days(to_tm(t.date()).tm_wday)));
+    milli = (t - beginOfWeek).total_milliseconds();
+}
+
+void ptimeToTimeval(ptime &t, timeval &tv) {
+    tv.tv_usec = t.time_of_day().fractional_seconds();
+    struct tm tm_ = to_tm(t);
+    tv.tv_sec = mktime(&tm_);
+}

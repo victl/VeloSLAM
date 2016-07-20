@@ -35,6 +35,7 @@
 =========================================================================*/
 
 #include "TransformManager.h"
+#include "CoordiTran.h"
 #include <cmath>
 #include <limits>
 #include <glog/logging.h>
@@ -77,7 +78,7 @@ void TransformManager::addTransform(boost::shared_ptr<PoseTransform> trans)
         std::cout << "Received 100 transforms data" << std::endl;
 }
 
-void TransformManager::loadFromFile(string filename, bool clearOldData)
+void TransformManager::loadFromMetaFile(string filename, bool clearOldData)
 {
     if (!boost::filesystem::exists(filename)) {
         return;
@@ -87,6 +88,29 @@ void TransformManager::loadFromFile(string filename, bool clearOldData)
     }
     std::ifstream ifs(filename);
     ifs >> transforms;
+}
+
+void TransformManager::loadFromTxtFile(string filename, bool clearOldData)
+{
+    if (!boost::filesystem::exists(filename)) {
+        return;
+    }
+    if (clearOldData) {
+        transforms.clear();
+    }
+    std::ifstream ifs(filename);
+    boost::shared_ptr<PoseTransform> trans(new PoseTransform);
+    timeval tv;
+    ptime t;
+    while (ifs) {
+        ifs >> trans->T[0] >> trans->T[1] >> trans->R[2] >> trans->R[0] >> trans->R[1] >> tv.tv_sec >> tv.tv_usec;
+        timevalToPtime(tv, t);
+        ptimeToWeekMilli(t, trans->week_number, trans->milliseconds);
+        trans->week_number_pos = trans->week_number;
+        trans->seconds_pos = trans->milliseconds / 1000.0f;
+        trans->timestamp = t;
+        this->addTransform(trans);
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -129,4 +153,12 @@ bool TransformManager::interpolateTransform(ptime& t, PoseTransform *trans)
         *trans = fore + ((back - fore) * ratio);
         return true;
     }
+}
+
+void TransformManager::setOriginLLH(const double LLH[])
+{
+    originLLH[0] = TO_RADIUS(LLH[0]);
+    originLLH[1] = TO_RADIUS(LLH[1]);
+    originLLH[2] = LLH[2];
+    llh2xyz(originLLH, originXYZ);
 }

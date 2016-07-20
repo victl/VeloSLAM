@@ -50,7 +50,7 @@ HDLManager::HDLManager(int capacity)
     , bufferDirName("/tmp/")
     , isUsingBuffer1(true)
     , writerIdle(true)
-    , fileBufferMode(true)
+    , fileBufferMode(false)
     , cacheCounter(0)
     , packetWriter(new vtkPacketFileWriter)
     , transMgr(new TransformManager)
@@ -76,13 +76,15 @@ HDLManager::~HDLManager()
     delete packetWriter;
 }
 
-void HDLManager::start()
+void HDLManager::start(bool shouldSwap)
 {
     this->loadHDLMeta();
     this->loadINSMeta();
     insSrc->start();
     hdlSrc->start();
-    startSwaping();
+    if (shouldSwap) {
+        startSwaping();
+    }
 }
 
 void HDLManager::stop()
@@ -106,22 +108,21 @@ void HDLManager::initialize()
 {
     // make sure output dir is prepared
     this->hardDriveBuffer = &hardDriveBuffer1;
-    this->startSwaping();
 }
 
 void HDLManager::scanCacheDir()
 {
     using namespace boost::filesystem;
     path p(this->bufferDirName);
-//    for (directory_entry& entry : directory_iterator(p)) {
-//        if (entry.path().extension() == HDL_META_EXT_NAME) {
-//            hdlMetaNames.insert(entry.path().filename().string());
-//        } else if (entry.path().extension() == INS_META_EXT_NAME) {
-//            insMetaNames.insert(entry.path().filename().string());
-//        } else if (entry.path().extension() == ".pcap") {
-//            bufferFileNames.insert(entry.path().filename().string());
-//        }
-//    }
+    for (directory_entry& entry : directory_iterator(p)) {
+        if (entry.path().extension() == HDL_META_EXT_NAME) {
+            hdlMetaNames.insert(entry.path().filename().string());
+        } else if (entry.path().extension() == INS_META_EXT_NAME) {
+            insMetaNames.insert(entry.path().filename().string());
+        } else if (entry.path().extension() == ".pcap") {
+            bufferFileNames.insert(entry.path().filename().string());
+        }
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -415,7 +416,7 @@ bool HDLManager::loadINSMeta()
         return false;
     } else {
         for (auto & f : insMetaNames) {
-            transMgr->loadFromFile(f);
+            transMgr->loadFromMetaFile(f);
         }
         return true;
     }

@@ -303,7 +303,7 @@ public:
 protected:
 
   boost::shared_ptr<PoseTransform> calcTransform(InsPVA const* data) {
-      double input[3] = {data->LLH[0] * M_PI / 180.0, data->LLH[1] * M_PI / 180.0, data->LLH[2]};
+      double input[3] = {TO_RADIUS(data->LLH[0]), TO_RADIUS(data->LLH[1]), data->LLH[2]};
       double output[3] = {0};
       llh2enu(input, ORIG_XYZ, output);
       boost::shared_ptr<PoseTransform> trans(new PoseTransform);

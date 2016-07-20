@@ -6,10 +6,12 @@ add_definitions(-std=c++11)
 if(UNIX AND NOT APPLE)
   set(LINUX TRUE)
 endif()
-if(LINUX)
+#set(ONCAR TRUE)
+if(ONCAR)
+    add_definitions(-DONCAR)
+elseif(LINUX)
     add_definitions(-DLINUX)
-endif()
-if(APPLE)
+elseif(APPLE)
     add_definitions(-DAPPLE)
 endif()
 ##########################
@@ -22,15 +24,15 @@ endif()
 #-----> at non-standard location.
 # Please set the QT5_PATH, QT5_MODULE_PATH, CMAKE_PREFIX_PATH according 
 # to your system profile.
-if(LINUX)
-  #set(QT5_PATH /usr)
-  #set(QT5_MODULE_PATH ${QT5_PATH}/lib/cmake)
-  #set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${QT5_MODULE_PATH})
-elseif(APPLE)
-  set(QT5_PATH /usr/local/opt/qt5/)
-  set(QT_QMAKE_EXECUTABLE /usr/local/opt/qt5/bin/qmake)
+if(ONCAR)
+  # paths need update
+  set(QT5_PATH /opt/Qt5.7)
   set(QT5_MODULE_PATH ${QT5_PATH}/lib/cmake)
   set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${QT5_MODULE_PATH})
+elseif(APPLE)
+    # if qt is not in standard location, set paths here
+elseif(LINUX)
+    # same as previous
 endif()
 
 # Find includes in corresponding build directories
@@ -49,13 +51,21 @@ find_package( Qt5Widgets )
 ##############################################################################
 # require Point Cloud Library. If needed, uncomment the find_package() line. #
 ##############################################################################
-set(PCL_PATH /usr/local/pcl-1.8.0-rc2)
-set(PCL_MODULE_PATH /usr/local/pcl-1.8.0-rc2/share/pcl-1.8)
-set(CMAKE_PREFIX_PATH ${PCL_MODULE_PATH} ${CMAKE_PREFIX_PATH})
-set(VTK_PATH /usr/local/vtk-7.0.0)
-set(VTK_MODULE_PATH /usr/local/vtk-7.0.0/lib/cmake)
-set(CMAKE_PREFIX_PATH ${VTK_MODULE_PATH} ${CMAKE_PREFIX_PATH})
-#find_package(PCL 1.7 REQUIRED COMPONENTS common io)
+if(ONCAR)
+  # paths need update
+  set(PCL_PATH /usr/local/pcl-1.8.0-rc2)
+  set(PCL_MODULE_PATH /usr/local/pcl-1.8.0-rc2/share/pcl-1.8)
+  set(CMAKE_PREFIX_PATH ${PCL_MODULE_PATH} ${CMAKE_PREFIX_PATH})
+  set(VTK_PATH /usr/local/vtk-7.0.0)
+  set(VTK_MODULE_PATH /usr/local/vtk-7.0.0/lib/cmake)
+  set(CMAKE_PREFIX_PATH ${VTK_MODULE_PATH} ${CMAKE_PREFIX_PATH})
+elseif(APPLE)
+    # if pcl/vtk is not in standard location, set paths here
+elseif(LINUX)
+    # same as previous
+endif()
+
+#find_package(PCL 1.7 REQUIRED)
 find_package(PCL 1.8 REQUIRED)
 if(PCL_FOUND)
   include_directories(${PCL_INCLUDE_DIRS})
@@ -63,16 +73,24 @@ if(PCL_FOUND)
   add_definitions(${PCL_DEFINITIONS})
 endif()
 
+#----> find eigen3
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/CMake)
 find_package(Eigen REQUIRED)
 include_directories(${EIGEN_INCLUDE_DIR})
 
-
-#set(BOOST_ROOT /usr/local/boost)
-#set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${BOOST_ROOT})
-#set(Boost_NO_BOOST_CMAKE TRUE)
-#set(Boost_NO_SYSTEM_PATHS TRUE)
-#set(Boost_LIBRARY_DIRS /usr/local/boost/lib)
+#----> find boost
+if(ONCAR)
+  # paths need update
+  set(BOOST_ROOT /usr/local/boost)
+  set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${BOOST_ROOT})
+  set(Boost_NO_BOOST_CMAKE TRUE)
+  set(Boost_NO_SYSTEM_PATHS TRUE)
+  set(Boost_LIBRARY_DIRS /usr/local/boost/lib)
+elseif(APPLE)
+    # if boost is not in standard location, set paths here
+elseif(LINUX)
+    # same as previous
+endif()
 if(WIN32 OR APPLE)
   set(Boost_USE_STATIC_LIBS ON)
 endif(WIN32 OR APPLE)
@@ -80,21 +98,21 @@ set(Boost_USE_MULTITHREADED ON)
 find_package(Boost REQUIRED COMPONENTS system thread chrono regex date_time filesystem)
 set(ALL_BOOST_LIBRARIES ${Boost_LIBRARIES})
 
+#----> find pcap
 find_library(PCAP_LIBRARY pcap DOC "pcap library")
 find_path(PCAP_INCLUDE_DIR pcap.h DOC "pcap include directory")
 include_directories(${PCAP_INCLUDE_DIR})
 
-########################
-# build paraview plugin
-
+# other dependencies
 set(deps)
-set(slam_sources)
 
 list(APPEND deps
   ${PCAP_LIBRARY}
   ${ALL_BOOST_LIBRARIES}
   )
 
+#----> slam library sources
+set(slam_sources)
 list(APPEND slam_sources
     vtkPacketFileReader.h
     vtkPacketFileWriter.cxx
@@ -116,9 +134,9 @@ list(APPEND slam_sources
 
 set(slam_library_name VeloSLAM)
 
-include_directories(${PCL_INCLUDE_DIRS})
-link_directories(${PCL_LIBRARY_DIRS})
-add_definitions(${PCL_DEFINITIONS})
+#include_directories(${PCL_INCLUDE_DIRS})
+#link_directories(${PCL_LIBRARY_DIRS})
+#add_definitions(${PCL_DEFINITIONS})
 
 add_library(${slam_library_name} SHARED ${slam_sources})
 target_link_libraries(${slam_library_name} ${PCAP_LIBRARY} ${ALL_BOOST_LIBRARIES} ${PCL_LIBRARIES} glog)
@@ -145,6 +163,9 @@ set(slam_main_deps
     ${PCL_LIBRARIES}
     glog)
 add_executable(SlamMain ${slam_main_srcs} ${UI_RES_FILES})
+if(APPLE)
+    set_target_properties(SlamMain PROPERTIES MACOSX_BUNDLE TRUE)
+endif(APPLE)
 target_link_libraries(SlamMain LINK_PUBLIC ${slam_main_deps} ${slam_library_name} ${ALL_BOOST_LIBRARIES})
 qt5_use_modules(SlamMain Widgets)
 

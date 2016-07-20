@@ -34,6 +34,7 @@
 
 #include <pcap.h>
 #include <string>
+#include <type_defs.h>
 #include <boost/date_time.hpp>
 
 /* Macro function that turns a number into a valid fpos_t.
@@ -184,7 +185,7 @@ public:
       {
       *headerReference = header;
       dataLength = header->len;
-      this->timevalToPtime(header->ts, t);
+      timevalToPtime(header->ts, t);
 //      timeSinceStart = getElapsedTime(header->ts, this->startTime);
       return true;
       }
@@ -193,7 +194,7 @@ public:
     const unsigned int bytesToSkip = 42;
     dataLength = header->len - bytesToSkip;
     data = data + bytesToSkip; // Will this action cause a tiny memory leak of 42 bytes?
-    this->timevalToPtime(header->ts, t);
+    timevalToPtime(header->ts, t);
 //    timeSinceStart = getElapsedTime(header->ts, this->startTime);
     return true;
   }
@@ -204,11 +205,6 @@ protected:
 //  {
 //    return (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1000000.00;
 //  }
-
-  void timevalToPtime(struct timeval& tv, ptime& t) {
-      t = from_time_t(tv.tv_sec);
-      t += time_duration(8,0,0,tv.tv_usec); // This is related to your local time_zone. For our group, we work at GMT+8
-  }
 
   pcap_t* pcapFile;
   std::string fileName;

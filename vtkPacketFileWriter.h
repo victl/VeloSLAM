@@ -74,12 +74,6 @@ protected:
 
   std::string FileName;
   std::string LastError;
-
-  void ptimeToTimeval(ptime& t, struct timeval& tv) {
-      tv.tv_usec = t.time_of_day().fractional_seconds();
-      struct tm tm_ = to_tm(t);
-      tv.tv_sec = mktime(&tm_);
-  }
 };
 
 #endif

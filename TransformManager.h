@@ -99,13 +99,16 @@ public:
   // case in most scenarios. That's why the internal container choosed std::vector
   void addTransform(boost::shared_ptr<PoseTransform> trans);
 
-  void loadFromFile(string filename, bool clearOldData = false);
+  void loadFromMetaFile(string filename, bool clearOldData = false);
+  void loadFromTxtFile(string filename, bool clearOldData = false);
 
   // Description:
   // Interpolate the list of transforms and determine a new transform (i.e.,
   // fill in the transformation provided). If t is outside the range of
   // (min,max) values, then t is clamped.
   bool interpolateTransform(ptime &t, PoseTransform *xform);
+
+  void setOriginLLH(const double LLH[3]);
 
 protected:
 
@@ -116,6 +119,7 @@ private:
   TransformManager(const TransformManager&);  // Not implemented.
   void operator=(const TransformManager&);  // Not implemented.
   boost::mutex mutex_;
+  double originLLH[3], originXYZ[3];
 
 };
 

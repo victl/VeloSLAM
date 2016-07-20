@@ -30,10 +30,12 @@
 
 #include "SmallPacketSender.h"
 #include "type_defs.h"
+#include "CoordiTran.h"
 
 #include <string>
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
 
 #include <boost/thread/thread.hpp>
 #include <boost/date_time.hpp>
@@ -44,44 +46,37 @@ using namespace boost::posix_time;
 
 int main(int argc, char* argv[])
 {
+    if (argc != 2) {
+        std::cout << "Usage: ./TestINSSender <ins_record_file>.txt" << std::endl;
+        exit(-1);
+    }
   try
     {
-      SmallPacketSender sender("127.0.0.1", 13123);
-      ptime t = microsec_clock::local_time();
-      struct timeval tv;
-      tv.tv_usec = t.time_of_day().fractional_seconds();
-      struct tm tm_ = to_tm(t);
-      tv.tv_sec = mktime(&tm_);
-      date today = day_clock::local_day();
-      int daysToWeek = today.day_of_week();
-      uint32_t millis = daysToWeek * 86400000 + t.time_of_day().total_milliseconds();
-      InsPVA insPVA;
-      insPVA.ins_status = 0;
-      insPVA.message_id = 508;
-      insPVA.milliseconds = millis;
-      insPVA.week_number = today.week_number();
-      insPVA.week_number_pos = today.week_number();
-      insPVA.seconds_pos = millis / 1e3;
-      for (int i = 0; i < 3; ++i) {
-          insPVA.Eulr[i] = i;
-          insPVA.V[i] = i + 3;
+      SmallPacketSender sender("127.0.0.1", 6777);
+      std::ifstream ifs(argv[1]);
+      InsPVA pva;
+      std::memset((void*)&pva, 0, sizeof(pva));
+      pva.message_id = 508;
+      timeval tv;
+      ptime t;
+      double originLLH[3] = {39.8569901,116.1736406,89.09288895}; //yby
+      double originXYZ[3];
+      llh2xyz(originLLH, originXYZ);
+      double enu[3] = {0};
+      while (ifs) {
+          ifs >> enu[0] >> enu[1] >> pva.Eulr[2] >> pva.Eulr[0] >> pva.Eulr[1] >> tv.tv_sec >> tv.tv_usec;
+          enu2llh(enu, originXYZ, pva.LLH);
+          timevalToPtime(tv, t);
+          ptimeToWeekMilli(t, pva.week_number, pva.milliseconds);
+          pva.week_number_pos = pva.week_number;
+          pva.seconds_pos = pva.milliseconds / 1000.0f;
+          sender.pumpPacket<InsPVA>(pva);
+          if ((sender.packetCount() % 100) == 0)
+            {
+            printf("total sent packets: %lu\n", sender.packetCount());
+            }
+          boost::this_thread::sleep(boost::posix_time::milliseconds(10));
       }
-      insPVA.LLH[0] = 31.59971848;
-      insPVA.LLH[1] = 120.7682072;
-      insPVA.LLH[2] = 18.8910392;
-
-      while (true)
-        {
-          insPVA.milliseconds += 10;
-          insPVA.seconds_pos += 1e-2;
-        sender.pumpPacket<InsPVA>(insPVA);
-        if ((sender.packetCount() % 500) == 0)
-          {
-          printf("total sent packets: %lu\n", sender.packetCount());
-          }
-
-        boost::this_thread::sleep(boost::posix_time::milliseconds(10));
-        }
     }
   catch( std::exception & e )
     {

@@ -7,6 +7,8 @@
 #include <iostream>
 #include <fstream>
 
+using namespace boost::posix_time;
+
 #define HDL_NUM_ROT_ANGLES 36001
 #define HDL_LASER_PER_FIRING 32
 #define HDL_MAX_NUM_LASERS 64
@@ -15,6 +17,8 @@
 #define WEEK_IN_MICROSECONDS 604800000000  // 1e6 * 3600 * 24 * 7
 #define HDL_META_EXT_NAME ".hdlmeta"
 #define INS_META_EXT_NAME ".insmeta"
+
+#define TO_RADIUS(degree) ((degree) * M_PI / 180)
 
 struct INSData {
     double T[3];
@@ -74,8 +78,6 @@ struct PoseMatrix{
     //TODO: define a 4 by 4 transform matrix
 };
 
-#define degreeToRadians(x) ((x) * M_PI / 180.0)
-
 struct PoseTransform {
     //TODO: change design of this struct
     double T[3];
@@ -123,9 +125,9 @@ struct PoseTransform {
     // Turn PoseTransform into Eigen's transform matrix
     Eigen::Affine3d getMatrix() {
         Eigen::Affine3d transform = Eigen::Affine3d::Identity();
-        transform.rotate (Eigen::AngleAxisd (degreeToRadians(R[0]), Eigen::Vector3d::UnitY()));
-        transform.rotate (Eigen::AngleAxisd (degreeToRadians(R[1]), Eigen::Vector3d::UnitX()));
-        transform.rotate (Eigen::AngleAxisd (degreeToRadians(R[2]), Eigen::Vector3d::UnitZ()));
+        transform.rotate (Eigen::AngleAxisd (TO_RADIUS(R[0]), Eigen::Vector3d::UnitY()));
+        transform.rotate (Eigen::AngleAxisd (TO_RADIUS(R[1]), Eigen::Vector3d::UnitX()));
+        transform.rotate (Eigen::AngleAxisd (TO_RADIUS(R[2]), Eigen::Vector3d::UnitZ()));
         transform.translation() << T[0], T[1], T[2];
         return transform;
     }
@@ -159,5 +161,9 @@ struct PointMeta {
     unsigned char distanceFlag;
     unsigned char flags;
 };
+
+void timevalToPtime(struct timeval& tv, ptime& t);
+void ptimeToWeekMilli(ptime& t, uint16_t& week, uint32_t &milli);
+void ptimeToTimeval(ptime& t, struct timeval& tv);
 
 #endif   //__type_defs_h__

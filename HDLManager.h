@@ -89,11 +89,14 @@
 #include <set>
 #include <boost/filesystem.hpp>
 
-#ifdef LINUX
+#ifdef ONCAR
 #define DEFAULT_CALIB_FILENAME "/home/denggroup/UGV/etc/db64.xml"
-#endif
+#else
 #ifdef APPLE
 #define DEFAULT_CALIB_FILENAME "/Users/victor/Workspace/ugv/bin/db64.xml"
+#else
+#define DEFAULT_CALIB_FILENAME "/home/victor/Workspace/ugv/bin/db64.xml"
+#endif
 #endif
 
 using namespace boost;
@@ -109,7 +112,7 @@ public:
     HDLManager(int capacity = 200); // 600 hdl frames ~= 1 minute
     virtual ~HDLManager();
 
-    void start();
+    void start(bool shouldSwap = false);
     void stop();
   // Description:
   // Return the number of frame in the list of LiDAR frames.

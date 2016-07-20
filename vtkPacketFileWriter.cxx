@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "vtkPacketFileWriter.h"
+#include "type_defs.h"
 
 #ifdef _MSC_VER
 
@@ -148,7 +149,7 @@ bool vtkPacketFileWriter::writePacket(const unsigned char* data, unsigned int da
     if (t.is_special()){ // Means caller didn't provided it (default constructed)
         gettimeofday(&currentTime, NULL);
     } else {
-        this->ptimeToTimeval(t, currentTime);
+        ptimeToTimeval(t, currentTime);
     }
     header.ts = currentTime;
 
