@@ -1,24 +1,46 @@
-#include "VeloSLAM.h"
+#include "HDLManager.h"
 #include <iostream>
-#include <boost/shared_ptr.hpp>
-#include <boost/thread.hpp>
-#include <boost/chrono.hpp>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 #include <fstream>
+#include <pcl/visualization/cloud_viewer.h>
 
-using namespace std;
+#define tic(label) boost::chrono::thread_clock::time_point (label) =boost::chrono::thread_clock::now()
+#define toc(label) \
+    std::cout << "processing used: " \
+    << boost::chrono::nanoseconds(boost::chrono::thread_clock::now() - (label)).count() / 1000 \
+    << " microseconds" << std::endl;
 
 int main() {
-    HDLManager hdlMgr;
-    hdlMgr.start();
-    while (true) {
-        int num = hdlMgr.getNumberOfFrames();
-        cout << "num of transforms: " << num << endl;
-        if (num > 95) {
-            hdlMgr.stop();
-            break;
+    HDLManager hdlMgr(5);
+    hdlMgr.setBufferDir("/Volumes/Moto/718/meta", false);
+    assert(hdlMgr.loadHDLMeta());
+    assert(hdlMgr.loadINSMeta());
+    auto frames = hdlMgr.getAllFrameMeta();
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("Point Viewer"));
+    viewer->setBackgroundColor (0, 0, 0);
+    pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
+    viewer->addPointCloud<pcl::PointXYZI> (cloud, "cloud");
+    viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
+    viewer->addCoordinateSystem (1.0);
+    viewer->initCameraParameters ();
+
+    int cnt = 0;
+    for (auto & f : frames) {
+        cloud = pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>);
+        tic(startGetFrame);
+        std::cout << f->timestamp << std::endl;
+        auto frame = hdlMgr.getFrameAt(f->timestamp);
+        if (!frame) {
+            ++cnt;
+            continue;
         }
-        boost::this_thread::sleep_for(boost::chrono::seconds(1));
+        auto& cloudVec = *(frame->points.get());
+        for (auto & c : cloudVec) {
+            cloud->insert(cloud->end(), c->begin(), c->end());
+        }
+        std::cout << "Num of points in current frame: " << cloud->size() << std::endl;
+        viewer->updatePointCloud<pcl::PointXYZI>(cloud, "cloud");
+        toc(startGetFrame);
+        viewer->spinOnce (100);
     }
+    std::cout << cnt << " invalid" << std::endl;
 }

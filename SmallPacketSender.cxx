@@ -5,7 +5,7 @@ SmallPacketSender::SmallPacketSender(std::string destinationIp,
                                int port) :
   Internal(new SmallPacketSender::vsInternal(destinationIp, port))
 {
-  this->Internal->DataSocket = new asio::ip::udp::socket(this->Internal->IOService);
+  this->Internal->DataSocket = new boost::asio::ip::udp::socket(this->Internal->IOService);
   this->Internal->DataSocket->open(this->Internal->DataEndpoint.protocol());
 }
 

@@ -37,7 +37,10 @@
 #include <vector>
 #include <boost/date_time.hpp>
 
-using namespace boost::posix_time;
+typedef boost::posix_time::ptime ptime;
+typedef boost::posix_time::time_duration time_duration;
+typedef boost::gregorian::date date;
+typedef boost::posix_time::microsec_clock microsec_clock;
 
 class vtkPacketFileWriter
 {

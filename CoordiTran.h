@@ -4,8 +4,6 @@
 #include <math.h>
 #include <iostream>
 
-using namespace std;
-
 void eulr2dcm(double eul_vect[3],double DCMbn[3][3]);
 void llh2xyz(double llh[3],double xyz[3]);
 void xyz2llh(double xyz [3],double llh [3]);

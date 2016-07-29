@@ -65,9 +65,6 @@
  */
 #define PCAP_PACKET_LEN 1264
 
-using namespace boost::posix_time;
-using namespace boost::gregorian;
-
 // Some versions of libpcap do not have PCAP_NETMASK_UNKNOWN
 #if !defined(PCAP_NETMASK_UNKNOWN)
   #define PCAP_NETMASK_UNKNOWN 0xffffffff

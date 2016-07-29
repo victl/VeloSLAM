@@ -1,4 +1,5 @@
 #include "CoordiTran.h"
+using namespace std;
 
 void eulr2dcm(double eul_vect[3],double DCMbn[3][3])
 {

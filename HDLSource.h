@@ -45,6 +45,7 @@
 class HDLManager;
 class TimeSolver;
 class TransformManager;
+class HDLParser;
 class HDLSource
 {
 public:
@@ -76,6 +77,7 @@ public:
   void setHDLManager(HDLManager* hp);
   void setTimeSolver(boost::shared_ptr<TimeSolver> solver);
   void setTransformManager(boost::shared_ptr<TransformManager> mgr);
+  boost::shared_ptr<HDLParser> getHDLParser();
 
   int getNumberOfChannels();
 

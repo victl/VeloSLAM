@@ -77,9 +77,6 @@
 
 typedef std::vector<boost::shared_ptr<PoseTransform> >::iterator MgrIter;
 
-using namespace boost::gregorian;
-using namespace boost::posix_time;
-
 class TransformManager
 {
 public:
@@ -99,8 +96,10 @@ public:
   // case in most scenarios. That's why the internal container choosed std::vector
   void addTransform(boost::shared_ptr<PoseTransform> trans);
 
-  void loadFromMetaFile(string filename, bool clearOldData = false);
-  void loadFromTxtFile(string filename, bool clearOldData = false);
+  bool loadFromMetaFile(std::string filename, bool clearOldData = false);
+  bool loadFromTxtFile(std::string filename, bool clearOldData = false);
+
+  bool writeToMetaFile(const std::string& filename);
 
   // Description:
   // Interpolate the list of transforms and determine a new transform (i.e.,

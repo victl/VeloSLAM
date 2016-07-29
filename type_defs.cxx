@@ -67,7 +67,7 @@ PoseTransform::PoseTransform()
 //}
 
 void timevalToPtime(timeval &tv, ptime &t) {
-    t = from_time_t(tv.tv_sec);
+    t = boost::posix_time::from_time_t(tv.tv_sec);
     t += time_duration(8,0,0,tv.tv_usec); // This is related to your local time_zone. For our group, we work at GMT+8
 }
 

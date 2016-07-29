@@ -20,8 +20,6 @@
 #include <boost/asio.hpp>
 #include <boost/static_assert.hpp>
 
-using namespace boost;
-
 class SmallPacketSender
 {
 public:
@@ -47,15 +45,15 @@ public:
              int port) :
     DataSocket(0),
     PacketCount(0),
-    DataEndpoint(asio::ip::address_v4::from_string(destinationIp), port)
+    DataEndpoint(boost::asio::ip::address_v4::from_string(destinationIp), port)
   {
   }
 
-  asio::ip::udp::socket* DataSocket;
+  boost::asio::ip::udp::socket* DataSocket;
 
   size_t PacketCount;
-  asio::ip::udp::endpoint DataEndpoint;
-  asio::io_service IOService;
+  boost::asio::ip::udp::endpoint DataEndpoint;
+  boost::asio::io_service IOService;
   };
 
 //-----------------------------------------------------------------------------
@@ -68,7 +66,7 @@ void SmallPacketSender::pumpPacket(T data)
   const unsigned char* rawdata = reinterpret_cast<const unsigned char *>(&data);
   unsigned int dataLength = sizeof(T);
     ++this->Internal->PacketCount;
-    size_t bytesSent = this->Internal->DataSocket->send_to(asio::buffer(rawdata, dataLength),
+    size_t bytesSent = this->Internal->DataSocket->send_to(boost::asio::buffer(rawdata, dataLength),
                                                             this->Internal->DataEndpoint);
 }
 

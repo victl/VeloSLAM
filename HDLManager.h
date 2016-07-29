@@ -99,10 +99,6 @@
 #endif
 #endif
 
-using namespace boost;
-using namespace boost::gregorian;
-using namespace boost::posix_time;
-using namespace boost::filesystem;
 namespace {
     typedef std::vector<boost::shared_ptr<HDLFrame>> Buffer;
 }
@@ -112,11 +108,24 @@ public:
     HDLManager(int capacity = 200); // 600 hdl frames ~= 1 minute
     virtual ~HDLManager();
 
-    void start(bool shouldSwap = false);
-    void stop();
+    void startOnline(bool shouldSwap = false);
+    void stopOnline();
+    void loadOffline(const std::string& insTxt, const std::string& pcapfile);
+
+    /* the purpose of 'touch' is rename the file if necessary */
+    void touchPcap(const std::string& pcapfile);
+
+    /* All load*** functions are intended to be used during offline, or just before
+     * the online process begins. See comments on scanCacheDir()
+     */
+    bool loadHDLMeta();
+    bool loadINSMeta();
+    bool saveHDLMeta();
+    bool saveINSMeta();
   // Description:
   // Return the number of frame in the list of LiDAR frames.
   int getNumberOfFrames();
+  int getNumberOfTransforms();
 
   // Description:
   void addFrame(boost::shared_ptr<HDLFrame> frame);
@@ -129,6 +138,12 @@ public:
   boost::intrusive_ptr<HDLFrame> getRecentFrame();
   boost::intrusive_ptr<HDLFrame> getFrameAt(ptime& t);
   boost::intrusive_ptr<HDLFrame> getFrameNear(ptime& t);
+
+  /* get meta means only meta info is accessable in the returned value,
+   * DO NOT ACCESS POINTS DATA VIA THIS METHOD! Instead, use ptime and getFrameAt()
+   * to query the required data */
+  vector<boost::shared_ptr<HDLFrame> > getAllFrameMeta();
+
   /* get range between [a,b], that is inclusive on both end */
   std::vector<boost::intrusive_ptr<HDLFrame>> getRangeBetween(ptime& a, ptime& b);
 
@@ -162,13 +177,6 @@ public:
 
   void cleanCache();
 
-  void saveHDLMeta();
-
-  /* All load*** functions are intended to be used during offline, or just before
-   * the online process begins. See comments on scanCacheDir()
-   */
-  bool loadHDLMeta();
-  bool loadINSMeta();
 
   void switchBuffer();
 
@@ -237,7 +245,7 @@ private:
   /* try not call this function when program is running online, because it'll read in
    * some files that are in use by some other threads. This could cause problems.
    */
-  void scanCacheDir();
+  void scanBufferDir();
 };
 
 #endif  // __HDLManager_h__

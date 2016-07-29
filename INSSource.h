@@ -49,7 +49,7 @@ public:
   void setTimeSolver(boost::shared_ptr<TimeSolver> solver);
   void setOrigin(double org[3]);
 
-  INSSource(int port = 1777);
+  INSSource(int port = 6777);
   virtual ~INSSource();
 
 private:

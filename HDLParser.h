@@ -125,9 +125,10 @@ public:
 
   // I/O and processing functions
   int getNumberOfChannels();
-  int readFrameInformation();
+
+  /* touchOnly means only rename the pcap file, don't use the returned value */
+  std::vector<boost::shared_ptr<HDLFrame> > readFrameInformation(const string &name, bool touchOnly = false);
   void setHDLManager(boost::shared_ptr<HDLManager> p);
-  int getNumberOfFrames();
 
   bool getFrame(boost::shared_ptr<HDLFrame> &dest, const string &filename, fpos_t &startPos, const int &skip);
   void processHDLPacket(unsigned char *data, unsigned int bytesReceived, boost::posix_time::ptime t);

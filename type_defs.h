@@ -7,7 +7,11 @@
 #include <iostream>
 #include <fstream>
 
-using namespace boost::posix_time;
+typedef boost::posix_time::ptime ptime;
+typedef boost::posix_time::time_duration time_duration;
+typedef boost::gregorian::date date;
+typedef boost::posix_time::microsec_clock microsec_clock;
+
 
 #define HDL_NUM_ROT_ANGLES 36001
 #define HDL_LASER_PER_FIRING 32
@@ -19,6 +23,7 @@ using namespace boost::posix_time;
 #define INS_META_EXT_NAME ".insmeta"
 
 #define TO_RADIUS(degree) ((degree) * M_PI / 180)
+#define TO_DEGREE(radius) ((radius) * 180 / M_PI)
 
 struct INSData {
     double T[3];
@@ -97,8 +102,11 @@ struct PoseTransform {
     PoseTransform operator+ (PoseTransform delta) {
         PoseTransform result;
         for (int i = 0; i < 3; ++i) {
+            // T[0,1,2] = [x(east), y(north), u(height)]
             result.T[i] = this->T[i] + delta.T[i];
+            // R[0,1,2] = [roll, pitch, yaw(azimuth)]
             result.R[i] = this->R[i] + delta.R[i];
+            // V[0,1,2] = [v(east), v(north), v(height)]
             result.V[i] = this->V[i] + delta.V[i];
         }
         return result;
@@ -128,6 +136,11 @@ struct PoseTransform {
         transform.rotate (Eigen::AngleAxisd (TO_RADIUS(R[0]), Eigen::Vector3d::UnitY()));
         transform.rotate (Eigen::AngleAxisd (TO_RADIUS(R[1]), Eigen::Vector3d::UnitX()));
         transform.rotate (Eigen::AngleAxisd (TO_RADIUS(R[2]), Eigen::Vector3d::UnitZ()));
+        /* debug */
+//        transform.rotate (Eigen::AngleAxisd (R[0], Eigen::Vector3d::UnitY()));
+//        transform.rotate (Eigen::AngleAxisd (R[1], Eigen::Vector3d::UnitX()));
+//        transform.rotate (Eigen::AngleAxisd (- R[2], Eigen::Vector3d::UnitZ()));
+        /* end debug */
         transform.translation() << T[0], T[1], T[2];
         return transform;
     }

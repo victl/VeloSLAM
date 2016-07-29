@@ -151,106 +151,130 @@ class HDLParser::vsInternal
 {
 public:
 
-  vsInternal()
-  {
-    this->firingSkip = 0;
-    this->lastAzimuth = -1;
-//    this->TimeAdjust = std::numeric_limits<double>::quiet_NaN();
-    this->packetReader = 0;
-    this->splitCounter = 0;
-    this->numberOfTrailingFrames = 0;
-    this->applyTransform = 0;
-    this->pointsSkip = 0;
-    this->shouldCropReturns = false;
-    this->shouldCropInside = false;
-    this->cropRegion[0] = this->cropRegion[1] = 0.0;
-    this->cropRegion[2] = this->cropRegion[3] = 0.0;
-    this->cropRegion[4] = this->cropRegion[5] = 0.0;
-    this->correctionsInitialized = false;
-    this->calibFileReportedNumLasers = 64;
+    vsInternal()
+    {
+        this->firingSkip = 0;
+        this->lastAzimuth = -1;
+        //    this->TimeAdjust = std::numeric_limits<double>::quiet_NaN();
+        this->packetReader = 0;
+        this->splitCounter = 0;
+        this->numberOfTrailingFrames = 0;
+        this->applyTransform = 0;
+        this->pointsSkip = 0;
+        this->shouldCropReturns = false;
+        this->shouldCropInside = false;
+        this->cropRegion[0] = this->cropRegion[1] = 0.0;
+        this->cropRegion[2] = this->cropRegion[3] = 0.0;
+        this->cropRegion[4] = this->cropRegion[5] = 0.0;
+        this->correctionsInitialized = false;
+        this->calibFileReportedNumLasers = 64;
 
-    this->laserSelections.resize(HDL_MAX_NUM_LASERS, true);
-    this->dualReturnFilter = 0;
-    this->isDualReturnData = false;
-    this->isHDL64Data = false;
+        this->laserSelections.resize(HDL_MAX_NUM_LASERS, true);
+        this->dualReturnFilter = 0;
+        this->isDualReturnData = false;
+        this->isHDL64Data = false;
+        frameMetaInited = false;
+        /* I have no better way to initialize HDL64BeamLUT */
 
-    this->init();
-  }
+        int tmparray[64] =
+        {36,37,58,59,38,39,32,33,40,41,34,35,48,49,42,43,50,51,44,45,52,53,46
+         ,47,60,61,54,55,62,63,56,57,4,5,26,27,6,7,0,1,8,9,2,3,16,17,10,11,18,19
+         ,12,13,20,21,14,15,28,29,22,23,30,31,24,25};
 
-  ~vsInternal()
-  {
-  }
+        std::memcpy(HDL64BeamLUT, tmparray, sizeof(int) * 64);
 
-  std::deque<boost::shared_ptr<HDLFrame> > frames;
-  boost::shared_ptr<HDLFrame> currentFrame;
-  boost::shared_ptr<TransformManager> transMgr;
-  boost::shared_ptr<HDLManager> hdlMgr;
+        this->init();
+    }
 
-  bool isDualReturnData;
-  bool isHDL64Data;
+    ~vsInternal()
+    {
+    }
 
-  int lastAzimuth;
+    std::deque<boost::shared_ptr<HDLFrame> > frames;
+    boost::shared_ptr<HDLFrame> currentFrame;
+    bool frameMetaInited;
+    boost::shared_ptr<TransformManager> transMgr;
+    boost::shared_ptr<HDLManager> hdlMgr;
 
-  vtkPacketFileReader reader;
-  std::vector<fpos_t> filePositions;
-  std::vector<int> firingSkips;
-  int firingSkip;
-  vtkPacketFileReader* packetReader;
+    bool isDualReturnData;
+    bool isHDL64Data;
 
-  int splitCounter;
+    /* Because the verticalCorrection of the beams are not sorted, we want the
+     * output point clouds be sorted by vertical angle (from lower to upper),
+     * hence this Look Up Table (LUT).
+     * Ref: The Velodyne HDL-64 S2 Users' Manual
+            or
+            The correction file '64db.xml' itself */
+    int HDL64BeamLUT[64];
 
-  // Parameters ready by calibration
-  std::vector<double> cos_lookup_table_;
-  std::vector<double> sin_lookup_table_;
-  HDLLaserCorrection laser_corrections_[HDL_MAX_NUM_LASERS];
-  int calibFileReportedNumLasers;
-  bool correctionsInitialized;
+    int lastAzimuth;
 
-  // User configurable parameters
-  int numberOfTrailingFrames;
-  int applyTransform;
-  int pointsSkip;
+    vtkPacketFileReader reader;
+    int firingSkip;
+    vtkPacketFileReader* packetReader;
 
-  bool shouldCropReturns;
-  bool shouldCropInside;
-  double cropRegion[6];
+    int splitCounter;
 
-  std::vector<bool> laserSelections;
-  unsigned int dualReturnFilter;
+    // Parameters ready by calibration
+    std::vector<double> cos_lookup_table_;
+    std::vector<double> sin_lookup_table_;
+    HDLLaserCorrection laser_corrections_[HDL_MAX_NUM_LASERS];
+    int calibFileReportedNumLasers;
+    bool correctionsInitialized;
 
-  void splitFrame(bool force=false);
-  boost::shared_ptr<HDLFrame> createHDLFrame();
+    // User configurable parameters
+    int numberOfTrailingFrames;
+    int applyTransform;
+    int pointsSkip;
 
-  void init();
-  void initLookUpTables();
-  void loadCorrectionsFile(const std::string& filename);
+    bool shouldCropReturns;
+    bool shouldCropInside;
+    double cropRegion[6];
 
-  void processHDLPacket(unsigned char *data, std::size_t bytesReceived, ptime timestamp);
+    std::vector<bool> laserSelections;
+    unsigned int dualReturnFilter;
 
-  // Process the laser return from the firing data
-  // firingData - one of HDL_FIRING_PER_PKT from the packet
-  // hdl64offset - either 0 or 32 to support 64-laser systems
-  // firingBlock - block of packet for firing [0-11]
-  // azimuthDiff - average azimuth change between firings
-  // timestamp - the timestamp of the packet
-  // geotransform - georeferencing transform
-  void processFiring(HDLFiringData* firingData,
-                     int hdl65offset,
-                     int firingBlock,
-                     int azimuthDiff,
-                     ptime timestamp,
-                     unsigned int rawtime,
-                     Eigen::Affine3d *geotransform);
+    void splitFrame(bool force=false);
+    boost::shared_ptr<HDLFrame> createHDLFrame();
 
-  void pushFiringData(const unsigned char laserId,
-                      const unsigned char rawLaserId,
-                      unsigned short azimuth,
-                      const ptime timestamp,
-                      const unsigned int rawtime,
-                      const HDLLaserReturn* laserReturn,
-                      const HDLLaserCorrection* correction,
-                      Eigen::Affine3d* geotransform,
-                      bool dualReturn);
+    void init();
+    void initLookUpTables();
+    void loadCorrectionsFile(const std::string& filename);
+
+    void processHDLPacket(unsigned char *data, std::size_t bytesReceived, ptime timestamp);
+
+    /* By re-projecting to the frame beginning, we could deal the whole frame with a
+   * coherent coordinate system - the carpose according to the arriving time of the
+   *  first packet.
+   * NOTE: The re-projection here is not strictly accurate, as no rotation is
+   * considered, because only translation relative to carpose is required to
+   * restore a global coordinate. */
+    void reprojectToFrameBeginning(PoseTransform* trans);
+
+    // Process the laser return from the firing data
+    // firingData - one of HDL_FIRING_PER_PKT from the packet
+    // hdl64offset - either 0 or 32 to support 64-laser systems
+    // firingBlock - block of packet for firing [0-11]
+    // azimuthDiff - average azimuth change between firings
+    // timestamp - the timestamp of the packet
+    // geotransform - georeferencing transform
+    void processFiring(HDLFiringData* firingData,
+                       int hdl65offset,
+                       int firingBlock,
+                       int azimuthDiff,
+                       ptime timestamp,
+                       unsigned int rawtime,
+                       Eigen::Affine3d *geotransform);
+
+    void pushFiringData(const unsigned char laserId,
+                        const unsigned char rawLaserId,
+                        unsigned short azimuth,
+                        const ptime timestamp,
+                        const unsigned int rawtime,
+                        const HDLLaserReturn* laserReturn,
+                        const HDLLaserCorrection* correction,
+                        Eigen::Affine3d* geotransform,
+                        bool dualReturn);
 };
 
 //-----------------------------------------------------------------------------
@@ -306,8 +330,6 @@ void HDLParser::setDirName(const std::string& filename)
     }
 
   this->dirName = filename;
-  this->internal_->filePositions.clear();
-  this->internal_->firingSkips.clear();
   this->unloadData();
 }
 
@@ -477,12 +499,6 @@ void HDLParser::clearAllFrames()
     this->internal_->frames.clear();
 }
 
-//-----------------------------------------------------------------------------
-int HDLParser::getNumberOfFrames()
-{
-    return this->internal_->filePositions.size();;
-}
-
 bool HDLParser::getFrame(boost::shared_ptr<HDLFrame> &dest, const string &filename, fpos_t &startPos, const int &skip)
 {
     this->unloadData();
@@ -509,7 +525,9 @@ bool HDLParser::getFrame(boost::shared_ptr<HDLFrame> &dest, const string &filena
 
       if (this->internal_->frames.size())
         {
-        dest.swap(this->internal_->frames.back());
+          dest->points = this->internal_->frames.back()->points;
+          dest->pointsMeta = this->internal_->frames.back()->pointsMeta;
+//        dest.swap(this->internal_->frames.back());
         this->internal_->frames.clear();
         return true;
         }
@@ -549,6 +567,7 @@ boost::shared_ptr<HDLFrame> HDLParser::vsInternal::createHDLFrame()
       f->pointsMeta = metadata;
       f->packets = packetsdata;
       f->isInMemory = true;
+      frameMetaInited = false;
     return f;
 }
 
@@ -704,14 +723,20 @@ void HDLParser::vsInternal::pushFiringData(const unsigned char laserId,
   p.y = pos[1];
   p.z = pos[2];
   p.intensity = intensity;
-  this->currentFrame->points->at(laserId)->points.push_back(p);
+//  if (isHDL64Data)
+//    this->currentFrame->points->at(HDL64BeamLUT[laserId])->points.push_back(p);
+//  else
+      this->currentFrame->points->at(laserId)->points.push_back(p);
 
   PointMeta m;
   m.azimuth = azimuth;
 //  m.Timestamp = timestamp;
 //  m.RawTime = rawtime;
   m.distance = distanceM;
-  this->currentFrame->pointsMeta->at(laserId)->push_back(m);
+//  if (isHDL64Data)
+//    this->currentFrame->pointsMeta->at(HDL64BeamLUT[laserId])->push_back(m);
+//  else
+      this->currentFrame->pointsMeta->at(laserId)->push_back(m);
 }
 
 //-----------------------------------------------------------------------------
@@ -834,7 +859,21 @@ void HDLParser::vsInternal::splitFrame(bool force)
     this->splitCounter--;
     return;
     }
-
+    /* update the width & height for each point cloud */
+  for (auto& cloud : *currentFrame->points) {
+      cloud->width = cloud->points.size();
+      cloud->height = 1;
+  }
+  /* debug */
+//  boost::shared_ptr<std::vector<pcl::PointCloud<pcl::PointXYZI>>>
+//          re_arranged(new std::vector<pcl::PointCloud<pcl::PointXYZI>>);
+//  re_arranged->resize(64);
+//  for (int i = 0; i < 64; ++i)
+//  {
+//      re_arranged->at(i) = currentFrame->points->at(HDL64BeamLUT[i]);
+//  }
+//  currentFrame->points = re_arranged;
+  /* end debug */
   this->frames.push_back(this->currentFrame);
   this->currentFrame = this->createHDLFrame();
 }
@@ -867,7 +906,10 @@ void HDLParser::vsInternal::processFiring(HDLFiringData* firingData,
     {
     unsigned char rawLaserId = static_cast<unsigned char>(dsr + hdl64offset);
     unsigned char laserId = rawLaserId;
+//    unsigned short azimuth = firingData->rotationalPosition;
+    /* debug */
     unsigned short azimuth = firingData->rotationalPosition;
+    /* end debug */
 
     // Detect VLP-16 data and adjust laser id if necessary
     int firingWithinBlock = 0;
@@ -930,17 +972,20 @@ void HDLParser::vsInternal::processHDLPacket(unsigned char *data, std::size_t by
   const uint32_t rawtime = dataPacket->gpsTimestamp;
 
   this->transMgr->interpolateTransform(timestamp, transform.get());
-  transform->timestamp = timestamp;
-  boost::shared_ptr<Eigen::Affine3d> geotransform;
-  if (transform->seconds_pos != -1) { // FIXME: once a graceful invalid transform check is devised, modify this code
-      geotransform = boost::shared_ptr<Eigen::Affine3d>(new Eigen::Affine3d(transform->getMatrix()));
-  }
-  if (currentFrame->packets->empty()) {
+  if (!frameMetaInited) {
       // set the new currentFrame's meta data
-      currentFrame->carpose = transform;
+      std::memcpy((void*) currentFrame->carpose.get(), (void*) transform.get(), sizeof(PoseTransform));
+//      currentFrame->carpose = transform;
       currentFrame->timestamp = timestamp;
       currentFrame->skips = firingSkip;
       currentFrame->packets->push_back(std::make_pair(timestamp, std::string(reinterpret_cast<char *>(data), bytesReceived)));
+      frameMetaInited = true;
+  }
+  transform->timestamp = timestamp;
+  boost::shared_ptr<Eigen::Affine3d> geotransform;
+  if (transform->seconds_pos != -1) { // FIXME: once a graceful invalid transform check is devised, modify this code
+      reprojectToFrameBeginning(transform.get());
+      geotransform = boost::shared_ptr<Eigen::Affine3d>(new Eigen::Affine3d(transform->getMatrix()));
   }
   // push the raw packet contents into current frame to make it offline capable
   currentFrame->packets->push_back(std::make_pair(timestamp, std::string(reinterpret_cast<char *>(data), bytesReceived)));
@@ -988,76 +1033,112 @@ void HDLParser::vsInternal::processHDLPacket(unsigned char *data, std::size_t by
       }
 
     this->lastAzimuth = firingData->rotationalPosition;
+  }
+}
+
+void HDLParser::vsInternal::reprojectToFrameBeginning(PoseTransform *trans)
+{
+    for (int i = 0; i < 3; ++i) {
+        trans->T[i] -= currentFrame->carpose->T[i];
     }
 }
 
 //-----------------------------------------------------------------------------
-int HDLParser::readFrameInformation()
+std::vector<boost::shared_ptr<HDLFrame>> HDLParser::readFrameInformation(const std::string& name, bool touchOnly)
 {
-  vtkPacketFileReader reader;
-  if (!reader.open(this->dirName))
+    std::vector<boost::shared_ptr<HDLFrame>> result;
+    vtkPacketFileReader reader;
+    if (!reader.open(name))
     {
-    std::cerr << "Failed to open packet file: " << this->dirName
-              << std::endl << reader.getLastError() << std::endl;
-    return 0;
+        std::cerr << "Failed to open packet file: " << name
+                  << std::endl << reader.getLastError() << std::endl;
+        return std::move(result);
+    }
+    /* check that filename is a valid ptime string. If not, the filename will be
+     * converted to a string corresponding to the first packet's ptime */
+    boost::filesystem::path p(name);
+    std::string s = p.filename().stem().string();
+    ptime t;
+    try {
+        t = boost::posix_time::from_iso_string(s);
+    } catch (boost::exception& e) {
+        std::cout << "Filename is not a valid ptime string, "
+                     "I'll convert it into a ptime string.\n";
     }
 
-  const unsigned char* data = 0;
-  unsigned int dataLength = 0;
-  ptime packetTime;
+    const unsigned char* data = 0;
+    unsigned int dataLength = 0;
+    ptime packetTime, filenameTime;
 
-  unsigned int lastAzimuth = 0;
-  unsigned int lastTimestamp = 0;
-  uint64_t timeCursor = 0, currentFrameBegin = 0;
+    unsigned int lastAzimuth = 0;
+    unsigned int lastTimestamp = 0;
+    uint64_t timeCursor = 0, currentFrameBegin = 0;
 
-  std::vector<fpos_t> filePositions;
-  std::vector<int> skips;
+    fpos_t lastFilePosition;
+    result.push_back(boost::shared_ptr<HDLFrame>(new HDLFrame));
+    reader.getFilePosition(&lastFilePosition);
 
-  fpos_t lastFilePosition;
-  reader.getFilePosition(&lastFilePosition);
+    result.back()->fileStartPos = lastFilePosition;
+    result.back()->skips = 0;
+    result.back()->isOnHardDrive = true;
+    result.back()->carpose = boost::shared_ptr<PoseTransform>(new PoseTransform);
 
-
-  filePositions.push_back(lastFilePosition);
-  skips.push_back(0);
-
-  while (reader.nextPacket(data, dataLength, packetTime))
+    while (reader.nextPacket(data, dataLength, packetTime))
     {
 
-    if (dataLength != 1206)
-      {
-      continue;
-      }
+        if (dataLength != 1206) continue;
 
-    const HDLDataPacket* dataPacket = reinterpret_cast<const HDLDataPacket *>(data);
-
-//    unsigned int timeDiff = dataPacket->gpsTimestamp - lastTimestamp;
-//    if (timeDiff > 600 && lastTimestamp != 0)
-//      {
-//      printf("missed %d packets\n",  static_cast<int>(floor((timeDiff/553.0) + 0.5)));
-//      }
-
-    for (int i = 0; i < HDL_FIRING_PER_PKT; ++i)
-      {
-      HDLFiringData firingData = dataPacket->firingData[i];
-
-      if (firingData.rotationalPosition < lastAzimuth)
-        {
-        filePositions.push_back(lastFilePosition);
-//        framesBoundary.push_back(std::make_pair(currentFrameBegin, timeCursor));
-        skips.push_back(i);
+        /* if the first packet (filenameTime.is_special() == true), set filenameTime accordingly */
+        if (filenameTime.is_special()) {
+            filenameTime = packetTime;
+            result.back()->timestamp = packetTime;
+            if (touchOnly) break;
         }
 
-      lastAzimuth = firingData.rotationalPosition;
-      }
+        const HDLDataPacket* dataPacket = reinterpret_cast<const HDLDataPacket *>(data);
 
-    lastTimestamp = dataPacket->gpsTimestamp;
-    currentFrameBegin = timeCursor++;
-    reader.getFilePosition(&lastFilePosition);
+        //    unsigned int timeDiff = dataPacket->gpsTimestamp - lastTimestamp;
+        //    if (timeDiff > 600 && lastTimestamp != 0)
+        //      {
+        //      printf("missed %d packets\n",  static_cast<int>(floor((timeDiff/553.0) + 0.5)));
+        //      }
+
+        for (int i = 0; i < HDL_FIRING_PER_PKT; ++i)
+        {
+            HDLFiringData firingData = dataPacket->firingData[i];
+
+            if (firingData.rotationalPosition < lastAzimuth)
+            {
+                result.push_back(boost::shared_ptr<HDLFrame>(new HDLFrame));
+                result.back()->fileStartPos = lastFilePosition;
+                result.back()->skips = i;
+                result.back()->isOnHardDrive = true;
+                result.back()->timestamp = packetTime;
+                result.back()->carpose = boost::shared_ptr<PoseTransform>(new PoseTransform);
+            }
+
+            lastAzimuth = firingData.rotationalPosition;
+        }
+
+        lastTimestamp = dataPacket->gpsTimestamp;
+        currentFrameBegin = timeCursor++;
+        reader.getFilePosition(&lastFilePosition);
     }
 
-  this->internal_->filePositions = filePositions;
-  this->internal_->firingSkips = skips;
-  return this->getNumberOfFrames();
+    /* set all frames' filenameTime */
+    for (auto& f : result) {
+        f->filenameTime = filenameTime;
+    }
+
+    /* rename the file if necessary */
+    if (t.is_special()) {
+        std::string newname = p.parent_path().string() + "/" + to_iso_string(filenameTime) + ".pcap";
+        boost::filesystem::path newp(newname);
+        boost::filesystem::rename(p, newp);
+        std::cout << "The original filename: '" << name
+                  << "' was converted to: '" << newname << '\'' << std::endl;
+    }
+    return std::move(result);
 }
 
 

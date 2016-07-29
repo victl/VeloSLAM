@@ -44,7 +44,7 @@ set(CMAKE_AUTORCC ON)
 
 #-----> For .ui files and many other resourse files to show up in your
 #-----> project/workspace, add them to ${UI_RES_FILES}
-set(UI_RES_FILES pclviewer.ui)
+set(UI_RES_FILES slamviewer.ui)
 find_package( Qt5Widgets )
 
 
@@ -103,12 +103,21 @@ find_library(PCAP_LIBRARY pcap DOC "pcap library")
 find_path(PCAP_INCLUDE_DIR pcap.h DOC "pcap include directory")
 include_directories(${PCAP_INCLUDE_DIR})
 
+###########################################################################
+# require OpenCV libraries. If needed, uncomment the find_package() line. #
+###########################################################################
+find_package( OpenCV )
+if(OpenCV_FOUND)
+  include_directories( ${OpenCV_INCLUDE_DIRS} )
+endif()
+
 # other dependencies
 set(deps)
 
 list(APPEND deps
   ${PCAP_LIBRARY}
   ${ALL_BOOST_LIBRARIES}
+  ${OpenCV_LIBS}
   )
 
 #----> slam library sources
@@ -123,6 +132,9 @@ list(APPEND slam_sources
     HDLSource.cxx
     HDLManager.cxx
     HDLFrame.cxx
+    MapManager.cxx
+    MapPatch.cxx
+    MapObjects.cxx
     TimeSolver.cxx
     CoordiTran.cpp
     SmallPacketSender.cxx
@@ -130,6 +142,27 @@ list(APPEND slam_sources
     type_defs.cxx
     VeloSLAM.h
     TimeLine.h
+    )
+set(slame_headers)
+list(APPEND slam_headers
+    CoordiTran.h
+    HDLFrame.h
+    HDLManager.h
+    HDLParser.h
+    INSSource.h
+    HDLSource.h
+    MapManager.h
+    MapPatch.h
+    MapObjects.h
+    SmallPacketSender.h
+    TimeLine.h
+    TimeSolver.h
+    TransformManager.h
+    type_defs.h
+    VeloSLAM.h
+    vtkPacketFileReader.h
+    vtkPacketFileWriter.h
+    vvPacketSender.h
     )
 
 set(slam_library_name VeloSLAM)
@@ -139,7 +172,7 @@ set(slam_library_name VeloSLAM)
 #add_definitions(${PCL_DEFINITIONS})
 
 add_library(${slam_library_name} SHARED ${slam_sources})
-target_link_libraries(${slam_library_name} ${PCAP_LIBRARY} ${ALL_BOOST_LIBRARIES} ${PCL_LIBRARIES} glog)
+target_link_libraries(${slam_library_name} ${PCAP_LIBRARY} ${ALL_BOOST_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBS} glog)
 
 add_executable(PacketFileSender PacketFileSender.cxx)
 target_link_libraries(PacketFileSender LINK_PUBLIC ${slam_library_name})
@@ -157,8 +190,8 @@ target_link_libraries(EigenTest ${slam_library_name})
 
 set(slam_main_srcs
     SlamMain.cpp
-    pclviewer.cpp
-    pclviewer.h)
+    slamviewer.cpp
+    slamviewer.h)
 set(slam_main_deps
     ${PCL_LIBRARIES}
     glog)
@@ -169,6 +202,21 @@ endif(APPLE)
 target_link_libraries(SlamMain LINK_PUBLIC ${slam_main_deps} ${slam_library_name} ${ALL_BOOST_LIBRARIES})
 qt5_use_modules(SlamMain Widgets)
 
+set(simple_gui_srcs
+    SimpleGUI.cpp
+    simpleviewer.cpp
+    simpleviewer.h)
+set(simple_gui_deps
+    ${PCL_LIBRARIES}
+    glog)
+add_executable(SimpleGUI ${simple_gui_srcs} simpleviewer.ui)
+if(APPLE)
+    set_target_properties(SimpleGUI PROPERTIES MACOSX_BUNDLE TRUE)
+endif(APPLE)
+target_link_libraries(SimpleGUI LINK_PUBLIC ${simple_gui_deps} ${slam_library_name} ${ALL_BOOST_LIBRARIES})
+qt5_use_modules(SimpleGUI Widgets)
+
+
 add_executable(TestINSFile TestINSFile.cxx)
 target_link_libraries(TestINSFile LINK_PUBLIC ${slam_library_name})
 add_executable(TestInterpolate TestInterpolateTransformMeasure.cxx)
@@ -176,3 +224,16 @@ target_link_libraries(TestInterpolate LINK_PUBLIC ${slam_main_deps} ${slam_libra
 
 add_executable(playground aplayground.cxx)
 target_link_libraries(playground LINK_PUBLIC ${slam_main_deps} ${slam_library_name} ${ALL_BOOST_LIBRARIES})
+
+if(ONCAR)
+  target_link_libraries( ${slam_library_name} rt)
+  install(TARGETS ${slam_library_name} DESTINATION /home/denggroup/UGV/libs)
+  install(FILES ${slam_headers} DESTINATION /home/denggroup/UGV/include/victl/VeloSLAM)
+elseif(APPLE)
+  install(TARGETS ${slam_library_name} DESTINATION /Users/victor/Workspace/ugv/libs)
+  install(FILES ${slam_headers} DESTINATION /Users/victor/Workspace/ugv/include/VeloSLAM)
+elseif(LINUX)
+  target_link_libraries( ${slam_library_name} rt)
+  install(TARGETS ${slam_library_name} DESTINATION /home/victor/Workspace/ugv/libs)
+  install(FILES ${slam_headers} DESTINATION /home/victor/Workspace/ugv/include/VeloSLAM)
+endif(ONCAR)

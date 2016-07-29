@@ -1,7 +1,7 @@
 #include "TimeSolver.h"
 
 TimeSolver::TimeSolver()
-    : epoch(day_clock::local_day().year(),1,1)
+    : epoch(boost::gregorian::day_clock::local_day().year(),1,1)
     , hdlHourTime(microsec_clock::local_time())
     , hdlInited(false)
     , insInited(false)

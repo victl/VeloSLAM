@@ -41,9 +41,6 @@
 #include <boost/date_time.hpp>
 #include <time.h>
 
-using namespace boost::gregorian;
-using namespace boost::posix_time;
-
 int main(int argc, char* argv[])
 {
     if (argc != 2) {

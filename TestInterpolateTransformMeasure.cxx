@@ -9,10 +9,6 @@
 #include <boost/chrono.hpp>
 #include <cmath>
 
-using namespace std;
-using namespace boost::posix_time;
-using namespace boost::gregorian;
-
 int test(TransformManager& mgr, boost::random::mt19937& rng) {
 
     boost::random::uniform_real_distribution<double> g2(0, 1e6 * 1e4);
@@ -21,16 +17,18 @@ int test(TransformManager& mgr, boost::random::mt19937& rng) {
     ptime tt = ptime(epoch, time_duration(0,0,0,target));
     double sum = 0;
     for (int i = 0; i < 100; ++i) {
-        cout << "Running test " << i << " ..." << endl;
+        std::cout << "Running test " << i << " ..." << std::endl;
         PoseTransform* trans = new PoseTransform;
         tt += time_duration(0,0,0,80);
-        boost::chrono::thread_clock::time_point start=boost::chrono::thread_clock::now();
+        boost::chrono::thread_clock::time_point start
+                = boost::chrono::thread_clock::now();
         mgr.interpolateTransform(tt, trans);
-        boost::chrono::thread_clock::time_point end=boost::chrono::thread_clock::now();
+        boost::chrono::thread_clock::time_point end
+                = boost::chrono::thread_clock::now();
         sum += (end - start).count();
-        LOG(INFO) <<'\n' << setprecision(15) <<"target : " << tt
+        LOG(INFO) <<'\n' << std::setprecision(15) <<"target : " << tt
              << "\nsearch result: " << trans->timestamp
-             << "\n Time used: " << end - start << endl;
+             << "\n Time used: " << end - start << std::endl;
         delete trans;
     }/*
     long ttt = tt.time_of_day().total_microseconds() / 1e3;
@@ -59,5 +57,5 @@ int main() {
         lasttime = now;
     }
     // test performance
-    cout << "average: " << test(mgr, rng) << endl;
+    std::cout << "average: " << test(mgr, rng) << std::endl;
 }

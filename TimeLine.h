@@ -10,9 +10,15 @@
 #include <glog/logging.h>
 #include <inttypes.h>
 
-using namespace boost::posix_time;
-using namespace boost::gregorian;
-using namespace std;
+typedef boost::posix_time::ptime ptime;
+typedef boost::posix_time::time_duration time_duration;
+typedef boost::gregorian::date date;
+typedef boost::posix_time::microsec_clock microsec_clock;
+using std::pair;
+using std::vector;
+using std::ofstream;
+using std::string;
+using std::make_pair;
 
 template <typename T_>
 class TimeLine {
@@ -493,16 +499,11 @@ template <typename T_>
 vector<boost::shared_ptr<T_> > TimeLine<T_>::getAll()
 {
     if (total_num == 0) return vector<boost::shared_ptr<T_> >();
-    int indexa = 0, offseta = 0;
-    int indexb = timeline.size() - 1, offsetb = timeline[indexb].size() - 1;
     vector<boost::shared_ptr<T_> > result;
-    result.insert(result.end(), timeline[indexa].begin() + offseta, timeline[indexa].end());
-    while (++indexa != indexb) {
-        if (!timeline[indexa].empty())
-            result.insert(result.end(), timeline[indexa].begin(), timeline[indexa].end());
+    for (int i = 0; i < timeline.size(); ++i) {
+        if (!timeline[i].empty())
+            result.insert(result.end(), timeline[i].begin(), timeline[i].end());
     }
-    if (indexb != 0)
-        result.insert(result.end(), timeline[indexb].begin(), timeline[indexb].begin() + offsetb);
     return std::move(result);
 }
 

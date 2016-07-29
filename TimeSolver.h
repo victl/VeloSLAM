@@ -5,9 +5,6 @@
 #include <boost/date_time.hpp>
 #include <boost/shared_ptr.hpp>
 
-using namespace boost::gregorian;
-using namespace boost::posix_time;
-
 class TimeSolver {
 public:
     TimeSolver();

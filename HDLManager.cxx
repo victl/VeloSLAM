@@ -66,6 +66,8 @@ HDLManager::HDLManager(int capacity)
     hdlSrc->setTimeSolver(timeSolver);
     hdlSrc->setTransformManager(transMgr);
     hdlSrc->setCorrectionsFile(DEFAULT_CALIB_FILENAME);
+    hdlParser->setTransformMgr(transMgr);
+    hdlParser->setCorrectionsFile(DEFAULT_CALIB_FILENAME);
     assert(setBufferDir(bufferDirName));
     this->initialize();
 }
@@ -76,7 +78,7 @@ HDLManager::~HDLManager()
     delete packetWriter;
 }
 
-void HDLManager::start(bool shouldSwap)
+void HDLManager::startOnline(bool shouldSwap)
 {
     this->loadHDLMeta();
     this->loadINSMeta();
@@ -87,7 +89,7 @@ void HDLManager::start(bool shouldSwap)
     }
 }
 
-void HDLManager::stop()
+void HDLManager::stopOnline()
 {
     hdlSrc->stop();
     insSrc->stop();
@@ -98,9 +100,35 @@ void HDLManager::stop()
     this->saveHDLMeta();
 }
 
+void HDLManager::loadOffline(const string &insTxt, const string &pcapfile)
+{
+    frames.clear();
+    transMgr->loadFromTxtFile(insTxt, true);
+    std::cout << "Read " << transMgr->getNumberOfTransforms() << " transforms.\n";
+    auto frameVec = hdlParser->readFrameInformation(pcapfile);
+    /* because readFrameInformation() can't determine carpose for each frame
+     * we need to ask transform manager */
+    for (auto & f : frameVec) {
+        transMgr->interpolateTransform(f->timestamp, f->carpose.get());
+        this->addFrame(f);
+    }
+    std::cout << "Read " << this->getNumberOfFrames() << " frames." << std::endl;
+    this->setBufferDir(boost::filesystem::path(pcapfile).parent_path().string(), false);
+}
+
+void HDLManager::touchPcap(const string &pcapfile)
+{
+    hdlParser->readFrameInformation(pcapfile, true);
+}
+
 int HDLManager::getNumberOfFrames() {
     boost::lock_guard<boost::mutex> lock (framesMutex);
     return static_cast<int>(this->frames.size());
+}
+
+int HDLManager::getNumberOfTransforms()
+{
+    return transMgr->getNumberOfTransforms();
 }
 
 //----------------------------------------------------------------------------
@@ -110,16 +138,16 @@ void HDLManager::initialize()
     this->hardDriveBuffer = &hardDriveBuffer1;
 }
 
-void HDLManager::scanCacheDir()
+void HDLManager::scanBufferDir()
 {
-    using namespace boost::filesystem;
-    path p(this->bufferDirName);
-    for (directory_entry& entry : directory_iterator(p)) {
-        if (entry.path().extension() == HDL_META_EXT_NAME) {
-            hdlMetaNames.insert(entry.path().filename().string());
-        } else if (entry.path().extension() == INS_META_EXT_NAME) {
-            insMetaNames.insert(entry.path().filename().string());
-        } else if (entry.path().extension() == ".pcap") {
+    boost::filesystem::path p(this->bufferDirName);
+    for (boost::filesystem::directory_entry& entry : boost::filesystem::directory_iterator(p)) {
+        std::string extname = entry.path().extension().string();
+        if (extname == HDL_META_EXT_NAME) {
+            hdlMetaNames.insert(entry.path().string());
+        } else if (extname == INS_META_EXT_NAME) {
+            insMetaNames.insert(entry.path().string());
+        } else if (extname == ".pcap") {
             bufferFileNames.insert(entry.path().filename().string());
         }
     }
@@ -141,6 +169,7 @@ void HDLManager::switchBuffer()
 
 void HDLManager::setCalibFile(string filename)
 {
+    hdlSrc->setCorrectionsFile(filename);
     hdlParser->setCorrectionsFile(filename);
 }
 
@@ -160,7 +189,7 @@ void HDLManager::addFrame(boost::shared_ptr<HDLFrame> frame)
     } else {
         pushCache(frame);
     }
-    frame->printSelf(); //debug
+//    frame->printSelf(); //debug
 }
 
 boost::intrusive_ptr<HDLFrame> HDLManager::prepareFrame(boost::shared_ptr<HDLFrame> frame)
@@ -171,6 +200,7 @@ boost::intrusive_ptr<HDLFrame> HDLManager::prepareFrame(boost::shared_ptr<HDLFra
     } else if (frame->isOnHardDrive) {
         std::string filename = bufferDirName + to_iso_string(frame->filenameTime) + ".pcap";
         if (hdlParser->getFrame(frame, filename, frame->fileStartPos, frame->skips)) {
+            this->pushCache(frame);
             return boost::intrusive_ptr<HDLFrame>(frame.get());
         } else {
             return boost::intrusive_ptr<HDLFrame>();
@@ -213,6 +243,12 @@ boost::intrusive_ptr<HDLFrame> HDLManager::getFrameNear(ptime &t)
     return prepareFrame(frames.getNearestData(t));
 }
 
+vector<boost::shared_ptr<HDLFrame> > HDLManager::getAllFrameMeta()
+{
+    boost::lock_guard<boost::mutex> lock (framesMutex);
+    return frames.getAll();
+}
+
 std::vector<boost::intrusive_ptr<HDLFrame> > HDLManager::getRangeBetween(ptime &a, ptime &b)
 {
     auto vec = frames.getRangeBetween(a, b);
@@ -236,7 +272,7 @@ size_t HDLManager::getBufferSize() {
 bool HDLManager::setBufferDir(string dirname, bool shouldCreateSubDir) {
 //    path p(dirname);
 //    directory_entry dir(p);
-    if (! is_directory(dirname)){
+    if (! boost::filesystem::is_directory(dirname)){
         std::cerr << "Name of directory invalid" << std::endl;
         return false;
     }
@@ -244,12 +280,12 @@ bool HDLManager::setBufferDir(string dirname, bool shouldCreateSubDir) {
     if (shouldCreateSubDir) {
         std::string subdirname = to_iso_string(microsec_clock::local_time());
         dirname += subdirname + "/";
-        path p(dirname);
+        boost::filesystem::path p(dirname);
         if(! create_directory(p)) {
             std::cerr << "Failed to create sub directory inside: " << dirname << std::endl;
             return false;
         }
-        assert(is_directory(dirname));
+        assert(boost::filesystem::is_directory(dirname));
     }
     {
         boost::lock_guard<boost::mutex> lock (writerMutex);
@@ -375,7 +411,7 @@ void HDLManager::updateCacheSize()
                 DLOG(WARNING) << "[CACHE]Consecutively putted back 10 in-using obj, cache size might need increasing.";
             }
         } else {
-            // obj->clear();
+             obj->clear();
             --cacheCounter;
         }
     }
@@ -388,16 +424,24 @@ void HDLManager::cleanCache()
     maxCacheSize = tmp;
 }
 
-void HDLManager::saveHDLMeta()
+bool HDLManager::saveHDLMeta()
 {
     std::string filename = this->bufferDirName + to_iso_string(microsec_clock::local_time()) + HDL_META_EXT_NAME;
     std::ofstream ofs(filename);
+    if (! ofs) return false;
     ofs << frames;
+    return true;
+}
+
+bool HDLManager::saveINSMeta()
+{
+    std::string filename = this->bufferDirName + to_iso_string(microsec_clock::local_time()) + INS_META_EXT_NAME;
+    return transMgr->writeToMetaFile(filename);
 }
 
 bool HDLManager::loadHDLMeta()
 {
-    scanCacheDir();
+    scanBufferDir();
     if (hdlMetaNames.empty()) {
         return false;
     } else {
@@ -411,7 +455,7 @@ bool HDLManager::loadHDLMeta()
 
 bool HDLManager::loadINSMeta()
 {
-    scanCacheDir();
+    scanBufferDir();
     if (insMetaNames.empty()) {
         return false;
     } else {

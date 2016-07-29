@@ -39,8 +39,6 @@
 #include <limits>
 #include <fstream>
 
-using namespace boost;
-
 //----------------------------------------------------------------------------
 namespace
 {
@@ -264,19 +262,19 @@ public:
     this->packetsQueue->enqueue(packet);
   }
 
-  HDLParser* getParser()
+  boost::shared_ptr<HDLParser> getParser()
   {
-    return this->hdlParser.get();
+    return this->hdlParser;
   }
 
   // Hold this when running parser code code or modifying its internals
   boost::mutex parserMutex;
   HDLManager* hdlMgr;
   boost::shared_ptr<TimeSolver> timeSolver;
+  boost::shared_ptr<HDLParser> hdlParser;
 
 protected:
 
-  boost::shared_ptr<HDLParser> hdlParser;
 
   boost::shared_ptr<SynchronizedQueue<std::string*> > packetsQueue;
 
@@ -692,6 +690,11 @@ void HDLSource::setTimeSolver(boost::shared_ptr<TimeSolver> solver)
 void HDLSource::setTransformManager(boost::shared_ptr<TransformManager> mgr)
 {
     this->internal_->hdlConsumer->getParser()->setTransformMgr(mgr);
+}
+
+boost::shared_ptr<HDLParser> HDLSource::getHDLParser()
+{
+    return this->internal_->hdlConsumer->getParser();
 }
 
 //----------------------------------------------------------------------------

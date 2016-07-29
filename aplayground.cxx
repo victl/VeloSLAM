@@ -1,14 +1,28 @@
-#include <boost/date_time.hpp>
+#include <fstream>
 #include <iostream>
-
-using namespace boost::posix_time;
-using namespace std;
+#include <vector>
+#include "type_defs.h"
+#include "HDLFrame.h"
+#include "HDLManager.h"
 
 int main(int argc, char* argv[]) {
-    ptime now = boost::posix_time::microsec_clock::local_time();
-    boost::gregorian::date today = now.date();
-    cout << today.week_number() << endl;
-    ptime beginOfWeek(boost::gregorian::date(today - boost::gregorian::days(to_tm(today).tm_wday)));
-    time_duration millis = now - beginOfWeek;
-    cout << "milli: " << millis.total_milliseconds() << endl;
+    HDLManager hdlMgr(5);
+//    hdlMgr.loadOffline("/Users/victor/Repo/HDL_Data/718/meta/20160718_170312.carposes"
+//                       , "/Users/victor/Repo/HDL_Data/718/meta/20160718T170344.105134.pcap");
+//    hdlMgr.saveHDLMeta();
+//    hdlMgr.saveINSMeta();
+    hdlMgr.setBufferDir("/Volumes/Camp/victor/Repo/HDL_Data/718/meta", false);
+    assert(hdlMgr.loadHDLMeta());
+    assert(hdlMgr.loadINSMeta());
+    auto frame = hdlMgr.getAllFrameMeta().at(5);
+    auto f = hdlMgr.getFrameAt(frame->timestamp);
+    for (int i = 0; i < f->points->size(); ++i) {
+        f->dumpToPCD("/tmp", i);
+    }
+    frame = hdlMgr.getAllFrameMeta().at(50);
+    f = hdlMgr.getFrameAt(frame->timestamp);
+    for (int i = 0; i < f->points->size(); ++i) {
+        f->dumpToPCD("/tmp", i);
+    }
+    std::cout << "Done.\n";
 }

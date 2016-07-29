@@ -74,43 +74,63 @@ void TransformManager::addTransform(boost::shared_ptr<PoseTransform> trans)
 {
     boost::unique_lock<boost::mutex> lock (mutex_);
     transforms.addData(trans);
-    if (transforms.size() % 100 == 0)
-        std::cout << "Received 100 transforms data" << std::endl;
+//    if (transforms.size() % 500 == 0)
+//        std::cout << "Received 500 transforms data" << std::endl;
 }
 
-void TransformManager::loadFromMetaFile(string filename, bool clearOldData)
+bool TransformManager::loadFromMetaFile(std::string filename, bool clearOldData)
 {
     if (!boost::filesystem::exists(filename)) {
-        return;
+        return false;
     }
     if (clearOldData) {
         transforms.clear();
     }
     std::ifstream ifs(filename);
     ifs >> transforms;
+    ifs.close();
+    return true;
 }
 
-void TransformManager::loadFromTxtFile(string filename, bool clearOldData)
+bool TransformManager::loadFromTxtFile(std::string filename, bool clearOldData)
 {
     if (!boost::filesystem::exists(filename)) {
-        return;
+        return false;
     }
     if (clearOldData) {
         transforms.clear();
     }
     std::ifstream ifs(filename);
-    boost::shared_ptr<PoseTransform> trans(new PoseTransform);
     timeval tv;
     ptime t;
-    while (ifs) {
-        ifs >> trans->T[0] >> trans->T[1] >> trans->R[2] >> trans->R[0] >> trans->R[1] >> tv.tv_sec >> tv.tv_usec;
+    double v;
+    boost::shared_ptr<PoseTransform> trans(new PoseTransform);
+    while (ifs >> trans->T[0] >> trans->T[1] >> trans->R[2] >> trans->R[0] >> trans->R[1] >> v >> tv.tv_sec >> tv.tv_usec) {
+        /* turning the angles from radius to degree */
+        trans->R[0] = TO_DEGREE(trans->R[0]);
+        trans->R[1] = TO_DEGREE(trans->R[1]);
+        /* the '-' is here because the definition of our Eulr angle is counter-clockwise,
+         * while as the normal definition is clockwise */
+        trans->R[2] = - TO_DEGREE(trans->R[2]);
         timevalToPtime(tv, t);
         ptimeToWeekMilli(t, trans->week_number, trans->milliseconds);
         trans->week_number_pos = trans->week_number;
         trans->seconds_pos = trans->milliseconds / 1000.0f;
         trans->timestamp = t;
         this->addTransform(trans);
+        trans = boost::shared_ptr<PoseTransform>(new PoseTransform);
     }
+    ifs.close();
+    return true;
+}
+
+bool TransformManager::writeToMetaFile(const string &filename)
+{
+    std::ofstream ofs(filename);
+    if (! ofs) return false;
+    ofs << transforms;
+    ofs.close();
+    return true;
 }
 
 //----------------------------------------------------------------------------
@@ -151,6 +171,7 @@ bool TransformManager::interpolateTransform(ptime& t, PoseTransform *trans)
         time_duration diff = t - fore.timestamp;
         double ratio = double(diff.total_microseconds()) / (back.timestamp - fore.timestamp).total_microseconds();
         *trans = fore + ((back - fore) * ratio);
+        trans->seconds_pos = 0; // set from -1 (default) to 0 means a valid data has got
         return true;
     }
 }
