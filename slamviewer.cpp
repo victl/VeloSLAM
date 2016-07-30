@@ -121,8 +121,8 @@ void SLAMViewer::threadLoop()
         auto frame = hdlMgr->getRecentFrame();
         if (frame) {
             cloud.reset(new PointCloudT);
-            for (int i = 0; i < frame->points->size(); ++i) {
-                *cloud += *(frame->points->at(i).get());
+            for (int i = 0; i < frame->points.size(); ++i) {
+                *cloud += *(frame->points[i]);
             }
             pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZI> intensity_distribution(cloud, 0,255,0);
             viewer->updatePointCloud<pcl::PointXYZI>(cloud, intensity_distribution, "cloud");

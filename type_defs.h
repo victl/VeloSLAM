@@ -17,7 +17,7 @@ typedef boost::posix_time::microsec_clock microsec_clock;
 #define HDL_LASER_PER_FIRING 32
 #define HDL_MAX_NUM_LASERS 64
 #define HDL_FIRING_PER_PKT 12
-#define HDL_MAX_PTS_PER_LASER 2000
+#define HDL_MAX_PTS_PER_LASER 2200
 #define WEEK_IN_MICROSECONDS 604800000000  // 1e6 * 3600 * 24 * 7
 #define HDL_META_EXT_NAME ".hdlmeta"
 #define INS_META_EXT_NAME ".insmeta"

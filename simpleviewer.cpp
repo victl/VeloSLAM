@@ -15,8 +15,8 @@ SimpleViewer::SimpleViewer (QWidget *parent)
 
   // Setup the cloud pointer
   dispCloud.reset (new PointCloudT);
-  holdedCloud.reset (new PointCloudT);
-  mergedCloud.reset (new PointCloudT);
+  inputCloud.reset (new PointCloudT);
+  groundlessCloud.reset (new PointCloudT);
 
   // Set up the QVTK window
   viewer.reset (new pcl::visualization::PCLVisualizer ("viewer", false));
@@ -32,11 +32,7 @@ SimpleViewer::SimpleViewer (QWidget *parent)
   hdlMgr->setBufferDir("/Users/victor/Repo/HDL_Data/718/meta", false);
   assert(hdlMgr->loadHDLMeta());
   assert(hdlMgr->loadINSMeta());
-  auto frame = hdlMgr->getAllFrameMeta().at(5);
-  f = hdlMgr->getFrameAt(frame->timestamp);
-  dispCloud = f->getPointsAsOneCloud(0, 63);
-  viewer->updatePointCloud<pcl::PointXYZI>(dispCloud, "cloud");
-  ui->qvtkWidget->update ();
+  frames = hdlMgr->getAllFrameMeta();
 }
 
 SimpleViewer::~SimpleViewer ()
@@ -54,7 +50,7 @@ void SimpleViewer::on_btnPrev_clicked()
 
 void SimpleViewer::on_btnNext_clicked()
 {
-    if (id >= f->points->size() - 1) return;
+    if (id >= f->points.size() - 1) return;
     ++id;
     updateViewer();
 }
@@ -62,18 +58,18 @@ void SimpleViewer::on_btnNext_clicked()
 void SimpleViewer::updateViewer()
 {
     ui->lcdBeamId->display(id);
-    *dispCloud = *holdedCloud + *f->points->at(id);
+    *dispCloud = *inputCloud + *f->points[id];
     dispCloud->width = dispCloud->points.size();
     dispCloud->height = 1;
     viewer->updatePointCloud<pcl::PointXYZI>(dispCloud, "cloud");
     ui->qvtkWidget->update ();
-    double xx = f->points->at(id)->front().x - f->points->at(id)->back().x;
-    double yy = f->points->at(id)->front().y - f->points->at(id)->back().y;
-    double zz = f->points->at(id)->front().z - f->points->at(id)->back().z;
+    double xx = f->points[id]->front().x - f->points[id]->back().x;
+    double yy = f->points[id]->front().y - f->points[id]->back().y;
+    double zz = f->points[id]->front().z - f->points[id]->back().z;
     std::cout << "(xx,yy,zz): (" << xx << ',' << yy << ',' << zz << ")\n";
     std::cout << "front/back distance: "
-              << f->pointsMeta->at(id)->front().distance
-              << ',' << f->pointsMeta->at(id)->back().distance << std::endl;
+              << f->pointsMeta[id]->front().distance
+              << ',' << f->pointsMeta[id]->back().distance << std::endl;
     double displacement = std::sqrt(
                 std::pow(xx, 2) + std::pow(yy, 2) + std::pow(zz, 2)
                 );
@@ -82,22 +78,22 @@ void SimpleViewer::updateViewer()
 
 void SimpleViewer::on_btnHold_clicked()
 {
-    *holdedCloud = *mergedCloud + *f->points->at(id);
+    *inputCloud = *groundlessCloud + *f->points[id];
 }
 
 void SimpleViewer::on_btnDiscard_clicked()
 {
-    *holdedCloud = *mergedCloud;
+    *inputCloud = *groundlessCloud;
     updateViewer();
 }
 
 void SimpleViewer::on_btnMerge_clicked()
 {
-    mergedCloud.reset(new PointCloudT);
+    groundlessCloud.reset(new PointCloudT);
     seq.push_back(id);
     std::string dispTxt;
     for (auto& val : seq) {
-        *mergedCloud += *f->points->at(val);
+        *groundlessCloud += *f->points[val];
         dispTxt += std::to_string(val) + '\t';
     }
     ui->textBrowser->setText(QString::fromStdString(dispTxt));

@@ -15,11 +15,11 @@ struct HDLFrame{
     ~HDLFrame();
     ptime timestamp;
     /* if swaped out of memory, reset the following 3 variables; */
-    boost::shared_ptr<std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> > points;
-    boost::shared_ptr<std::vector<boost::shared_ptr<std::vector<PointMeta> > > > pointsMeta;
+    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> points;
+    std::vector<boost::shared_ptr<std::vector<PointMeta> > > pointsMeta;
     /* the original packets are stored here, the purpose is to store them into
      * hard drive when memory is insufficient. */
-    boost::shared_ptr<std::vector<std::pair<boost::posix_time::ptime, std::string>>> packets;
+    std::vector<std::pair<boost::posix_time::ptime, std::string>> packets;
     /* mainly used for visualizing */
     boost::shared_ptr<PoseTransform> carpose;
     /* in memory indicator. (could check the validity of this->points for the

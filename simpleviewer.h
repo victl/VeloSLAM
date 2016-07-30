@@ -39,8 +39,8 @@ public slots:
 protected:
   boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer;
   PointCloudT::Ptr dispCloud;
-  PointCloudT::Ptr holdedCloud;
-  PointCloudT::Ptr mergedCloud;
+  PointCloudT::Ptr inputCloud;
+  PointCloudT::Ptr groundlessCloud;
 
 private slots:
   void on_btnPrev_clicked();
@@ -58,8 +58,9 @@ private slots:
   void on_btnGo_clicked();
 
 private:
-  Ui::SimpleViewer *ui;
-  HDLManager* hdlMgr;
+    Ui::SimpleViewer *ui;
+    HDLManager* hdlMgr;
+    std::vector<boost::shared_ptr<HDLFrame> > frames;
     boost::intrusive_ptr<HDLFrame> f;
     std::deque<int> seq;
     int id;

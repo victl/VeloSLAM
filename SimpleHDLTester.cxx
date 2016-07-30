@@ -33,7 +33,7 @@ int main() {
             ++cnt;
             continue;
         }
-        auto& cloudVec = *(frame->points.get());
+        auto& cloudVec = frame->points;
         for (auto & c : cloudVec) {
             cloud->insert(cloud->end(), c->begin(), c->end());
         }

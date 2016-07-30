@@ -177,9 +177,12 @@ public:
         /* I have no better way to initialize HDL64BeamLUT */
 
         int tmparray[64] =
-        {36,37,58,59,38,39,32,33,40,41,34,35,48,49,42,43,50,51,44,45,52,53,46
-         ,47,60,61,54,55,62,63,56,57,4,5,26,27,6,7,0,1,8,9,2,3,16,17,10,11,18,19
-         ,12,13,20,21,14,15,28,29,22,23,30,31,24,25};
+        {38,39,42,43,32,33,36,37,40,41,46,47,50,51,54,55,44,45,48,49,52,53,58,59
+         ,62,63,34,35,56,57,60,61,6,7,10,11,0,1,4,5,8,9,14,15,18,19,22,23,12,13
+         ,16,17,20,21,26,27,30,31,2,3,24,25,28,29};
+//        {36,37,58,59,38,39,32,33,40,41,34,35,48,49,42,43,50,51,44,45,52,53,46
+//         ,47,60,61,54,55,62,63,56,57,4,5,26,27,6,7,0,1,8,9,2,3,16,17,10,11,18,19
+//         ,12,13,20,21,14,15,28,29,22,23,30,31,24,25};
 
         std::memcpy(HDL64BeamLUT, tmparray, sizeof(int) * 64);
 
@@ -525,8 +528,9 @@ bool HDLParser::getFrame(boost::shared_ptr<HDLFrame> &dest, const string &filena
 
       if (this->internal_->frames.size())
         {
-          dest->points = this->internal_->frames.back()->points;
-          dest->pointsMeta = this->internal_->frames.back()->pointsMeta;
+          dest->points = std::move(this->internal_->frames.back()->points);
+          dest->pointsMeta
+                  = std::move(this->internal_->frames.back()->pointsMeta);
 //        dest.swap(this->internal_->frames.back());
         this->internal_->frames.clear();
         return true;
@@ -548,24 +552,32 @@ int HDLParser::getNumberOfChannels()
 //-----------------------------------------------------------------------------
 boost::shared_ptr<HDLFrame> HDLParser::vsInternal::createHDLFrame()
 {
-    boost::shared_ptr<std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> >
-            data(new std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr>(calibFileReportedNumLasers));
-      for(int i = 0; i < calibFileReportedNumLasers; ++i){
-          data->at(i) = pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>);
-          data->at(i)->points.reserve(HDL_MAX_PTS_PER_LASER);
-      }
-      boost::shared_ptr<std::vector<boost::shared_ptr<std::vector<PointMeta> > > >
-              metadata(new std::vector<boost::shared_ptr<std::vector<PointMeta> > >(calibFileReportedNumLasers));
-        for(int i = 0; i < calibFileReportedNumLasers; ++i){
-            metadata->at(i) = boost::shared_ptr<std::vector<PointMeta> >(new std::vector<PointMeta>);
-            metadata->at(i)->reserve(HDL_MAX_PTS_PER_LASER);
-        }
-        boost::shared_ptr<std::vector<std::pair<boost::posix_time::ptime, std::string>>>
-                packetsdata(new std::vector<std::pair<boost::posix_time::ptime, std::string>>());
+//    boost::shared_ptr<std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> >
+//            data(new std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr>(calibFileReportedNumLasers));
+//      for(int i = 0; i < calibFileReportedNumLasers; ++i){
+//          data->at(i) = pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>);
+//          data->at(i)->points.reserve(HDL_MAX_PTS_PER_LASER);
+//      }
+//      boost::shared_ptr<std::vector<boost::shared_ptr<std::vector<PointMeta> > > >
+//              metadata(new std::vector<boost::shared_ptr<std::vector<PointMeta> > >(calibFileReportedNumLasers));
+//        for(int i = 0; i < calibFileReportedNumLasers; ++i){
+//            metadata->at(i) = boost::shared_ptr<std::vector<PointMeta> >(new std::vector<PointMeta>);
+//            metadata->at(i)->reserve(HDL_MAX_PTS_PER_LASER);
+//        }
+//        boost::shared_ptr<std::vector<std::pair<boost::posix_time::ptime, std::string>>>
+//                packetsdata(new std::vector<std::pair<boost::posix_time::ptime, std::string>>());
       boost::shared_ptr<HDLFrame> f(new HDLFrame);
-      f->points = data;
-      f->pointsMeta = metadata;
-      f->packets = packetsdata;
+      f->points.resize(calibFileReportedNumLasers);
+      for(int i = 0; i < calibFileReportedNumLasers; ++i){
+          f->points[i] = pcl::PointCloud<pcl::PointXYZI>::Ptr(new pcl::PointCloud<pcl::PointXYZI>);
+          f->points[i]->points.reserve(HDL_MAX_PTS_PER_LASER);
+      }
+      f->pointsMeta.resize(calibFileReportedNumLasers);
+      for(int i = 0; i < calibFileReportedNumLasers; ++i){
+          f->pointsMeta[i] = boost::shared_ptr<std::vector<PointMeta> >(new std::vector<PointMeta>);
+          f->pointsMeta[i]->reserve(HDL_MAX_PTS_PER_LASER);
+      }
+//      f->packets = packetsdata;
       f->isInMemory = true;
       frameMetaInited = false;
     return f;
@@ -724,9 +736,9 @@ void HDLParser::vsInternal::pushFiringData(const unsigned char laserId,
   p.z = pos[2];
   p.intensity = intensity;
 //  if (isHDL64Data)
-//    this->currentFrame->points->at(HDL64BeamLUT[laserId])->points.push_back(p);
+//    this->currentFrame->points[HDL64BeamLUT[laserId]]->points.push_back(p);
 //  else
-      this->currentFrame->points->at(laserId)->points.push_back(p);
+      this->currentFrame->points[laserId]->points.push_back(p);
 
   PointMeta m;
   m.azimuth = azimuth;
@@ -734,9 +746,9 @@ void HDLParser::vsInternal::pushFiringData(const unsigned char laserId,
 //  m.RawTime = rawtime;
   m.distance = distanceM;
 //  if (isHDL64Data)
-//    this->currentFrame->pointsMeta->at(HDL64BeamLUT[laserId])->push_back(m);
+//    this->currentFrame->pointsMeta[HDL64BeamLUT[laserId]]->push_back(m);
 //  else
-      this->currentFrame->pointsMeta->at(laserId)->push_back(m);
+      this->currentFrame->pointsMeta[laserId]->push_back(m);
 }
 
 //-----------------------------------------------------------------------------
@@ -860,19 +872,25 @@ void HDLParser::vsInternal::splitFrame(bool force)
     return;
     }
     /* update the width & height for each point cloud */
-  for (auto& cloud : *currentFrame->points) {
+  for (auto& cloud : currentFrame->points) {
       cloud->width = cloud->points.size();
       cloud->height = 1;
   }
-  /* debug */
-//  boost::shared_ptr<std::vector<pcl::PointCloud<pcl::PointXYZI>>>
-//          re_arranged(new std::vector<pcl::PointCloud<pcl::PointXYZI>>);
-//  re_arranged->resize(64);
-//  for (int i = 0; i < 64; ++i)
-//  {
-//      re_arranged->at(i) = currentFrame->points->at(HDL64BeamLUT[i]);
-//  }
-//  currentFrame->points = re_arranged;
+  /* begin debug */
+  if (isHDL64Data)
+  {
+      std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> re_arranged_pts;
+      std::vector<boost::shared_ptr<std::vector<PointMeta> > > re_arranged_ptm;
+      re_arranged_pts.resize(64);
+      re_arranged_ptm.resize(64);
+      for (int i = 0; i < 64; ++i)
+      {
+          re_arranged_pts[i] = currentFrame->points[HDL64BeamLUT[i]];
+          re_arranged_ptm[i] = currentFrame->pointsMeta[HDL64BeamLUT[i]];
+      }
+      currentFrame->points = std::move(re_arranged_pts);
+      currentFrame->pointsMeta = std::move(re_arranged_ptm);
+  }
   /* end debug */
   this->frames.push_back(this->currentFrame);
   this->currentFrame = this->createHDLFrame();
@@ -978,7 +996,7 @@ void HDLParser::vsInternal::processHDLPacket(unsigned char *data, std::size_t by
 //      currentFrame->carpose = transform;
       currentFrame->timestamp = timestamp;
       currentFrame->skips = firingSkip;
-      currentFrame->packets->push_back(std::make_pair(timestamp, std::string(reinterpret_cast<char *>(data), bytesReceived)));
+      currentFrame->packets.push_back(std::make_pair(timestamp, std::string(reinterpret_cast<char *>(data), bytesReceived)));
       frameMetaInited = true;
   }
   transform->timestamp = timestamp;
@@ -988,7 +1006,7 @@ void HDLParser::vsInternal::processHDLPacket(unsigned char *data, std::size_t by
       geotransform = boost::shared_ptr<Eigen::Affine3d>(new Eigen::Affine3d(transform->getMatrix()));
   }
   // push the raw packet contents into current frame to make it offline capable
-  currentFrame->packets->push_back(std::make_pair(timestamp, std::string(reinterpret_cast<char *>(data), bytesReceived)));
+  currentFrame->packets.push_back(std::make_pair(timestamp, std::string(reinterpret_cast<char *>(data), bytesReceived)));
 
 //  int firingBlock = this->firingSkip;
 //  this->firingSkip = 0;

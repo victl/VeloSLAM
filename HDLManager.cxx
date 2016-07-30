@@ -341,7 +341,7 @@ bool HDLManager::writePackets()
             writerIdle = true;
             return false;
         }
-        filenameTime = buff->front()->packets->front().first;
+        filenameTime = buff->front()->packets.front().first;
         filename = bufferDirName + to_iso_string(filenameTime) + ".pcap";
     }
 
@@ -350,7 +350,7 @@ bool HDLManager::writePackets()
     long long posOffset = PCAP_GLOBAL_HEADER_LEN;
     for (int i = 0; i < buff->size(); ++i) {
         int packetsNum = 0;
-        auto& f = *(buff->at(i)->packets.get());
+        auto& f = buff->at(i)->packets;
         for(int j = 0; j < f.size(); ++j) {
             packetWriter->writePacket(
                         reinterpret_cast<const unsigned char*>(f[j].second.c_str()),

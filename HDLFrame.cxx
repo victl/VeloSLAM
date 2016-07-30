@@ -22,14 +22,14 @@ HDLFrame::~HDLFrame()
 void HDLFrame::printSelf()
 {
     int pn = 0;
-    for (int i = 0; i < points->size(); ++i) {
-        pn += points->at(i)->points.size();
+    for (int i = 0; i < points.size(); ++i) {
+        pn += points[i]->points.size();
     }
     DLOG(INFO) << "Total points: " << pn << "\n\t"
-               << "typical (xyzi): " << points->at(10)->points[0].x << ", "
-               << points->at(10)->points[0].y << ", "
-               << points->at(10)->points[0].z << ", "
-               << points->at(10)->points[0].intensity;
+               << "typical (xyzi): " << points[10]->points[0].x << ", "
+               << points[10]->points[0].y << ", "
+               << points[10]->points[0].z << ", "
+               << points[10]->points[0].intensity;
 
 }
 
@@ -38,7 +38,7 @@ void HDLFrame::dumpToFiles(string dirname)
     dirname += "/" + boost::posix_time::to_iso_string(timestamp);
     std::ofstream ofs(dirname + "-points.txt");
     ofs << std::setprecision(9);
-    for (auto& cloud : *points) {
+    for (auto& cloud : points) {
         for (auto& point : cloud->points) {
             ofs << point.x << '\t' << point.y << '\t' << point.z
                 << '\t' << point.intensity << std::endl;
@@ -46,7 +46,7 @@ void HDLFrame::dumpToFiles(string dirname)
     }
     ofs.close();
     ofs.open(dirname + "-pointsMeta.txt");
-    for (auto& cloud : *pointsMeta) {
+    for (auto& cloud : pointsMeta) {
         for (auto& meta : *cloud) {
             ofs << meta.azimuth << '\t' << meta.distance
                 << '\t' << (int)meta.intensityFlag
@@ -74,7 +74,7 @@ void HDLFrame::dumpToFiles(string dirname)
 
 void HDLFrame::dumpToImage(string dirname, double gridSize, int beamId)
 {
-    if (!points) return;
+    if (!points.size()) return;
     dirname += "/" + boost::posix_time::to_iso_string(timestamp)
             + std::to_string(beamId) + ".png";
     /* only +/- 100m range is considered */
@@ -96,7 +96,7 @@ void HDLFrame::dumpToImage(string dirname, double gridSize, int beamId)
         endBeam = beamId + 1;
     }
     for (int i = startBeam; i < endBeam; ++i) {
-        auto& currCloud = points->at(i)->points;
+        auto& currCloud = points[i]->points;
         for (auto& point : currCloud) {
             if (coordsToRowCol(point.x, point.y)) {
                 img.at<unsigned char>(col, row) = point.intensity;
@@ -108,7 +108,7 @@ void HDLFrame::dumpToImage(string dirname, double gridSize, int beamId)
 
 void HDLFrame::dumpToPCD(string dirname, int beamId)
 {
-    if (!points) return;
+    if (!points.size()) return;
     int startBeam, endBeam;
     if (beamId < 0 || beamId > 63) {
         startBeam = 0;
@@ -128,42 +128,30 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr
 HDLFrame::getPointsAsOneCloud(int startBeam , int endBeam)
 {
     pcl::PointCloud<pcl::PointXYZI>::Ptr result;
-    if (!points) return result;
+    if (!points.size()) return result;
     if (startBeam < 0) startBeam = 0;
     if (endBeam <= startBeam + 1)
     {
-        return points->at(startBeam);
+        return points[startBeam];
     }
-    if (endBeam > points->size()) endBeam = points->size();
+    if (endBeam > points.size()) endBeam = points.size();
     result = pcl::PointCloud<pcl::PointXYZI>::Ptr
             (new pcl::PointCloud<pcl::PointXYZI>);
     for (int i = startBeam; i < endBeam; ++i) {
-        *result += *(points->at(i));
+        *result += *(points[i]);
     }
     return result;
 }
 
 void HDLFrame::clear()
 {
-    if (points) {
-        for (int i = 0; i < points->size(); ++i) {
-            if (points && points->at(i)) {
-                points->at(i).reset();
-            }
-        }
-    }
-    if (pointsMeta) {
-        for (int i = 0; i < pointsMeta->size(); ++i) {
-            if (pointsMeta && pointsMeta->at(i)) {
-                pointsMeta->at(i).reset();
-            }
-        }
-    }
-    /* an empty one */
+    /* swap with an empty vector to free up memory */
+    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> pt;
+    std::vector<boost::shared_ptr<std::vector<PointMeta> > > ptm;
     std::vector<std::pair<boost::posix_time::ptime, std::string>> vec;
-    if (packets) {
-        packets->swap(vec);
-    }
+    points.swap(pt);
+    pointsMeta.swap(ptm);
+    packets.swap(vec);
     /* debug */
     DLOG(INFO) << "frame: " << this->timestamp << " cleared.";
     /* end debug */
